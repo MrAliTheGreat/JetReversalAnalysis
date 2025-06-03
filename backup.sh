@@ -18,6 +18,18 @@
 #
 # Everything ready! Just run: ssh -p local_port username@destination_server_ip
 #
+#
+################################################################################ Crontab ################################################################################
+#
+# To run the backup periodically put the following command in "crontab -e" file --> It'll run the backup.sh at 23:00 every Friday!
+#   0 23 * * 5 ~/path-to-backup.sh
+#
+# Since we are using ssh-agent we need to specify SSH_AUTH_SOCK in crontab file so that it'll know where to look to find the private_key added by ssh-add
+# Run the following command and add the output to top of the crontab file:
+#   env | grep SSH_AUTH_SOCK
+# It'll look something like:
+#   SSH_AUTH_SOCK=path-to-directory
+#
 #########################################################################################################################################################################
 
 srcPath="$HOME/Documents/Thesis/src";
