@@ -1,0 +1,16 @@
+{
+    "num_single_sample_timesteps": 1000,
+    "window_stride": 2,
+    "input_window_length": 5,
+    "label_window_length": 2,
+    "input_features": [
+        "psi_e",
+        "b_e",
+        "psi_plus",
+        "b_plus"
+    ],
+    "label_features": [
+        "u_list",
+        "r_list"
+    ]
+}
