@@ -12,5 +12,15 @@
     "label_features": [
         "u_list",
         "r_list"
-    ]
+    ],
+    "positional_encoding_max_len": 5000,
+    "embedding_dim": 64,
+    "num_attention_head": 8,
+    "num_encoder_layers": 3,
+    "num_decoder_layers": 3,
+    "position_wise_nn_dim": 32,
+    "dropout": 0.1,
+    "batch_size": 32,
+    "epochs": 25,
+    "learning_rate": 0.0001
 }
