@@ -1,26 +1,37 @@
 {
+    "model_path": "./models/transformer-20.pt",
     "num_single_sample_timesteps": 1000,
-    "window_stride": 2,
-    "input_window_length": 5,
-    "label_window_length": 2,
+    "window_stride": 1,
+    "input_window_length": 20,
+    "label_window_length": 5,
     "input_features": [
         "psi_e",
         "b_e",
         "psi_plus",
-        "b_plus"
+        "b_plus",
+        "k_e_psi_e_list",
+        "k_e_b_e_list",
+        "k_e_psi_plus_list",
+        "k_e_b_plus_list",
+        "heat_flux_psi_e_b_e_list",
+        "heat_flux_psi_e_b_plus_list",
+        "b_e_psi_plus_list",
+        "b_e_b_plus_list",
+        "psi_plus_b_plus_list",
+        "eta_list"
     ],
     "label_features": [
         "u_list",
         "r_list"
     ],
     "positional_encoding_max_len": 5000,
-    "embedding_dim": 64,
+    "embedding_dim": 32,
     "num_attention_head": 8,
-    "num_encoder_layers": 3,
-    "num_decoder_layers": 3,
-    "position_wise_nn_dim": 32,
+    "num_encoder_layers": 2,
+    "num_decoder_layers": 2,
+    "position_wise_nn_dim": 16,
     "dropout": 0.1,
     "batch_size": 32,
-    "epochs": 25,
+    "epochs": 20,
     "learning_rate": 0.0001
 }
