@@ -1,37 +1,37 @@
 {
-    "model_path": "./models/transformer-20.pt",
+    "seed_val": 7,
+    "model_path": "./models/transformer-deterministic-100-50-300.pt",
+    "dataset_path": {
+        "train": "./dataset/deterministic-dataset-train.csv",
+        "validation": "./dataset/deterministic-dataset-val.csv",
+        "test": "./dataset/deterministic-dataset-test.csv"
+    },
     "num_single_sample_timesteps": 1000,
-    "window_stride": 1,
-    "input_window_length": 20,
-    "label_window_length": 5,
+    "window_stride": 300,
+    "input_window_length": 100,
+    "label_window_length": 50,
     "input_features": [
         "psi_e",
         "b_e",
         "psi_plus",
         "b_plus",
-        "k_e_psi_e_list",
-        "k_e_b_e_list",
-        "k_e_psi_plus_list",
-        "k_e_b_plus_list",
-        "heat_flux_psi_e_b_e_list",
-        "heat_flux_psi_e_b_plus_list",
-        "b_e_psi_plus_list",
-        "b_e_b_plus_list",
-        "psi_plus_b_plus_list",
-        "eta_list"
+        "u_list"
     ],
     "label_features": [
-        "u_list",
-        "r_list"
+        "psi_e",
+        "b_e",
+        "psi_plus",
+        "b_plus",
+        "u_list"
     ],
     "positional_encoding_max_len": 5000,
-    "embedding_dim": 32,
+    "embedding_dim": 64,
     "num_attention_head": 8,
     "num_encoder_layers": 2,
     "num_decoder_layers": 2,
-    "position_wise_nn_dim": 16,
-    "dropout": 0.1,
-    "batch_size": 32,
-    "epochs": 20,
+    "position_wise_nn_dim": 64,
+    "dropout": 0.5,
+    "batch_size": 64,
+    "epochs": 5,
     "learning_rate": 0.0001
 }

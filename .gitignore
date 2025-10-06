@@ -1,6 +1,6 @@
 thesis/
 models/
+dataset/
 
-reversalData_minor.csv
 .backupignore
 backup.log
