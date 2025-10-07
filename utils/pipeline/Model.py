@@ -38,21 +38,40 @@ class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
             "cross_attention": []
         }
 
-    def forward(self, inputs_embeds, decoder_inputs_embeds, **kwargs):
+    def forward(self, inputs_embeds = None, decoder_inputs_embeds = None, encoder_outputs = None, **kwargs):
+        if(inputs_embeds is None and encoder_outputs is None):
+            raise ValueError("input_embeds and encoder_outputs can not both be None at the same time!")
+        
+        if(inputs_embeds is not None and encoder_outputs is not None):
+            raise ValueError("input_embeds and encoder_outputs can not both have values at the same time")
+
         outputs = super().forward(
             inputs_embeds = inputs_embeds,
             decoder_inputs_embeds = decoder_inputs_embeds,
+            encoder_outputs = encoder_outputs,
             **kwargs
         )
 
         if(outputs.encoder_attentions):
-            self.attention_weights["encoder_attention"].extend(outputs.encoder_attentions)
+            self.attention_weights["encoder_attention"].append(torch.stack(outputs.encoder_attentions, dim = 0))
             
         if(outputs.decoder_attentions):
-            self.attention_weights["decoder_attention"].extend(outputs.decoder_attentions)
+            self.attention_weights["decoder_attention"].append(torch.stack(outputs.decoder_attentions, dim = 0))
             
         if(outputs.cross_attentions):
             # Encoder-Decoder Attention
-            self.attention_weights["cross_attention"].extend(outputs.cross_attentions)
+            self.attention_weights["cross_attention"].append(torch.stack(outputs.cross_attentions, dim = 0))
 
         return outputs
+    
+    def get_average_attention_values(self, attention_type = "cross_attention"):
+        '''
+            self.attention_weights[attention_type]
+                Type: list
+                Shape: output_window_num_timesteps * [torch.Size([num_decoder_layers, batch_size = 1, num_heads, single_input_timestep = 1, input_window_num_timesteps])]
+            Returns
+                Type: torch.tensor
+                Shape: (output_window_num_timesteps, input_window_num_timesteps)
+        '''
+
+        return torch.stack(self.attention_weights[attention_type], dim = 0).squeeze_(dim = 2).squeeze_(dim = 3).mean(dim = 1).mean(dim = 1).cpu().numpy()

@@ -32,6 +32,6 @@
     "position_wise_nn_dim": 64,
     "dropout": 0.5,
     "batch_size": 64,
-    "epochs": 5,
+    "epochs": 10,
     "learning_rate": 0.0001
 }
