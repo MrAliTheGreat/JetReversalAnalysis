@@ -59,7 +59,8 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
             stride,
             input_window_length,
             label_window_length,
-            chunk_size = 512
+            chunk_size = 512,
+            inference = False
         ):
         '''
             input_df & label_df
@@ -84,6 +85,8 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
         self.label_window_length = label_window_length
         self.valid_length = self.input_window_length + self.label_window_length
         self.chunk_size = chunk_size
+        self.inferece = inference
+
         self.means = self.dict2numpy(stats["mean"], input_features)
         self.stds = self.dict2numpy(stats["std"], input_features)
         self.stds[self.stds == 0] = 10 ** -8
@@ -124,6 +127,7 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
                     
                     input_window = input_df[time_series_idx, input_window_start_idx: label_window_start_idx, :]
                     label_window = label_df[time_series_idx, label_window_start_idx: label_window_start_idx + self.label_window_length, :]
+                    label_full = label_df[time_series_idx, :, :]
 
                     # input_window_mean = input_window.mean(axis = 0)
                     # input_window_std = input_window.std(axis = 0)
@@ -132,5 +136,13 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
                     
                     input_window = (input_window - self.means) / self.stds
                     label_window = (label_window - self.means) / self.stds
+                    label_full = (label_full - self.means) / self.stds
+    
+                    input_window = torch.tensor(input_window, dtype = torch.float)
+                    label_window = torch.tensor(label_window, dtype = torch.float)
+                    label_full = torch.tensor(label_full, dtype = torch.float)
 
-                    yield torch.tensor(input_window, dtype = torch.float), torch.tensor(label_window, dtype = torch.float)
+                    if(self.inferece):
+                        yield input_window, label_window, label_full
+                    else:
+                        yield input_window, label_window

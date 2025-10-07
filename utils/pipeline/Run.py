@@ -31,7 +31,7 @@ def train(model, optimizer, criterion, r2, data_loader, device, epoch, total_epo
 
         bos = model.bos_token.expand(num_label_batch_samples, -1, -1)
 
-        decoder_input = torch.cat([bos, batch_y[:, :-1, :]], dim = 1)    # Shifted right with one bos
+        decoder_input = torch.cat([bos, batch_y[:, :-1, :]], dim = 1)    # Shift right with one bos
 
         optimizer.zero_grad()
         outputs = model(
@@ -59,6 +59,62 @@ def train(model, optimizer, criterion, r2, data_loader, device, epoch, total_epo
     return avg_loss, avg_r2
 
 
+def autoregress(model, batch_x, batch_y, device):
+    num_label_batch_samples, num_label_timesteps, num_label_features = batch_y.shape    # num_label_features == len(label_features)
+
+    encoder_outputs = model.encoder(
+        inputs_embeds = model.encoder.embed_tokens(batch_x)
+    )
+
+    # bos = torch.zeros(
+    #     num_label_batch_samples, 1, num_label_features,
+    #     dtype = torch.float,
+    #     device = device
+    # )
+
+    bos = model.bos_token.expand(num_label_batch_samples, -1, -1)
+
+    preds = torch.zeros(
+        num_label_batch_samples, num_label_timesteps, num_label_features,
+        dtype = torch.float,
+        device = device
+    )
+    
+    ################### Analyze This ########################
+    # This is where KV caching is critical for speed.
+    past_key_values = None
+
+    for i in range(num_label_timesteps):
+        # 4. Pass the current decoder input to the decoder
+        # Use KV caching to only compute attention for the new token
+        decoder_outputs = model.decoder(
+            inputs_embeds = model.decoder.embed_tokens(bos),
+            encoder_hidden_states = encoder_outputs.last_hidden_state,
+            past_key_values = past_key_values,
+            use_cache = True,
+            return_dict = True
+        )
+        
+        # 5. Extract the output for the *last* token
+        # This is the new prediction
+        decoder_last_hidden_state = decoder_outputs.last_hidden_state[:, -1:, :]
+
+        # 6. Apply the final linear layer (lm_head) to get the prediction
+        next_prediction = model.lm_head(decoder_last_hidden_state) # Shape: (batch_size, 1, num_label_features)
+
+        preds[:, i, :] = next_prediction.squeeze(1)
+
+        # 8. Update past_key_values for the next iteration
+        # This is the core of KV caching
+        past_key_values = decoder_outputs.past_key_values
+
+        # 9. The prediction for the current step becomes the input for the next step
+        bos = next_prediction
+    ################### Analyze This ########################
+
+    return preds
+
+
 def validate(model, criterion, r2, data_loader, device, epoch, total_epochs):
     '''
         Validate for a single epoch
@@ -77,58 +133,12 @@ def validate(model, criterion, r2, data_loader, device, epoch, total_epochs):
             batch_x = batch_x.to(device)
             batch_y = batch_y.to(device)
 
-            num_label_batch_samples, num_label_timesteps, num_label_features = batch_y.shape    # num_label_features == len(label_features)
-
-            encoder_outputs = model.encoder(
-                inputs_embeds = model.encoder.embed_tokens(batch_x)
-            )
-
-            # bos = torch.zeros(
-            #     num_label_batch_samples, 1, num_label_features,
-            #     dtype = torch.float,
-            #     device = device
-            # )
-
-            bos = model.bos_token.expand(num_label_batch_samples, -1, -1)
-
-            preds = torch.zeros(
-                num_label_batch_samples, num_label_timesteps, num_label_features,
-                dtype = torch.float,
+            preds = autoregress(
+                model = model,
+                batch_x = batch_x,
+                batch_y = batch_y,
                 device = device
             )
-            
-            ################### Analyze This ########################
-            # This is where KV caching is critical for speed.
-            past_key_values = None
-
-            for i in range(num_label_timesteps):
-                # 4. Pass the current decoder input to the decoder
-                # Use KV caching to only compute attention for the new token
-                decoder_outputs = model.decoder(
-                    inputs_embeds = model.decoder.embed_tokens(bos),
-                    encoder_hidden_states = encoder_outputs.last_hidden_state,
-                    past_key_values = past_key_values,
-                    use_cache = True,
-                    return_dict = True
-                )
-                
-                # 5. Extract the output for the *last* token
-                # This is the new prediction
-                decoder_last_hidden_state = decoder_outputs.last_hidden_state[:, -1:, :]
-
-                # 6. Apply the final linear layer (lm_head) to get the prediction
-                next_prediction = model.lm_head(decoder_last_hidden_state) # Shape: (batch_size, 1, num_label_features)
-
-                preds[:, i, :] = next_prediction.squeeze(1)
-
-                # 8. Update past_key_values for the next iteration
-                # This is the core of KV caching
-                past_key_values = decoder_outputs.past_key_values
-
-                # 9. The prediction for the current step becomes the input for the next step
-                bos = next_prediction
-            ################### Analyze This ########################
-
 
             loss = criterion(preds, batch_y)
             val_loss += loss.item()
@@ -145,3 +155,4 @@ def validate(model, criterion, r2, data_loader, device, epoch, total_epochs):
     print(f"Epoch [{epoch + 1}/{total_epochs}], Val Loss: {avg_loss:.6f}, Val R2: {avg_r2:.6f}\n")
 
     return avg_loss, avg_r2
+
