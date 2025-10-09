@@ -29,8 +29,23 @@ class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
         
         self.output_dim = output_dim
 
-        self.bos_token = torch.nn.Parameter(torch.empty(1, 1, output_dim))
-        torch.nn.init.normal_(self.bos_token, mean = 0.0, std = 1.0)
+        # self.bos_token = torch.nn.Parameter(torch.empty(1, 1, output_dim))
+        # torch.nn.init.normal_(self.bos_token, mean = 0.0, std = 1.0)
+
+        # self.bos_projector = torch.nn.Linear(d_model, output_dim)
+        # self.bos_projector = torch.nn.Sequential(
+        #     torch.nn.Linear(d_model, d_model),
+        #     torch.nn.LeakyReLU(),
+        #     torch.nn.Linear(d_model, output_dim)
+        # )
+
+        self.bos_projector = torch.nn.Sequential(
+            torch.nn.Linear(d_model, d_model),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(d_model, d_model),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(d_model, output_dim)
+        )
 
         self.attention_weights = {
             "encoder_attention": [],

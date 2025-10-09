@@ -1,9 +1,10 @@
 from tqdm import tqdm
 import torch
+import numpy as np
 
 
 
-def train(model, optimizer, criterion, r2, data_loader, device, epoch, total_epochs):
+def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device, epoch, total_epochs):
     '''
         Train for a single epoch
     '''
@@ -21,21 +22,23 @@ def train(model, optimizer, criterion, r2, data_loader, device, epoch, total_epo
         batch_x = batch_x.to(device)
         batch_y = batch_y.to(device)
 
-        num_label_batch_samples, _, num_label_features = batch_y.shape
+        _, num_label_timesteps, _ = batch_y.shape
 
-        # bos = torch.zeros(
-        #     num_label_batch_samples, 1, num_label_features,
-        #     dtype = torch.float,
-        #     device = device
-        # )
+        # bos = model.bos_token.expand(num_label_batch_samples, -1, -1)
 
-        bos = model.bos_token.expand(num_label_batch_samples, -1, -1)
+        encoder_outputs = model.encoder(
+            inputs_embeds = model.encoder.embed_tokens(batch_x),
+            return_dict = True
+        )
+
+        final_encoder_state = encoder_outputs.last_hidden_state[:, -1:, :]
+        bos = model.bos_projector(final_encoder_state)
 
         decoder_input = torch.cat([bos, batch_y[:, :-1, :]], dim = 1)    # Shift right with one bos
 
         optimizer.zero_grad()
         outputs = model(
-            inputs_embeds = model.encoder.embed_tokens(batch_x),
+            encoder_outputs = encoder_outputs,
             decoder_inputs_embeds = model.decoder.embed_tokens(decoder_input),
         )
 
@@ -50,12 +53,33 @@ def train(model, optimizer, criterion, r2, data_loader, device, epoch, total_epo
             batch_y.view(batch_y.shape[0], -1)
         )
         progress_bar.set_postfix({"train_loss": f"{loss.item():.6f}"})
+        for t in range(num_label_timesteps):
+            per_timestep_r2[t].update(
+                outputs.logits[:, t, :],
+                batch_y[:, t, :]
+            )
 
     avg_loss = train_loss / num_batches
-    avg_r2 = r2.compute()
+    avg_r2 = r2.compute().item()
     r2.reset()
 
+    timestep_r2s = np.array([r2.compute().item() for r2 in per_timestep_r2])
+    for r2 in per_timestep_r2:
+        r2.reset()
+
     print(f"Epoch [{epoch + 1}/{total_epochs}], Train Loss: {avg_loss:.6f}, Train R2: {avg_r2:.6f}")
+
+    sorted_idxs = np.argsort(timestep_r2s)
+    print("\nWorst 5 Time-Steps Train R2:")
+    for idx in sorted_idxs[:5]:
+        print(f"    Time-step {idx + 1}: R2 = {timestep_r2s[idx]:.6f}")
+
+    print("Best 5 Time-Steps Train R2:")
+    for idx in sorted_idxs[-5:][::-1]:
+        print(f"    Time-step {idx + 1}: R2 = {timestep_r2s[idx]:.6f}")
+
+    print()
+
     return avg_loss, avg_r2
 
 
@@ -69,7 +93,7 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
 
     num_label_batch_samples, num_label_timesteps, num_label_features = batch_y.shape    # num_label_features == len(label_features)
 
-    bos = model.bos_token.expand(num_label_batch_samples, -1, -1)
+    # decoder_single_timestep_input = model.bos_token.expand(num_label_batch_samples, -1, -1)
 
     preds = torch.zeros(
         num_label_batch_samples, num_label_timesteps, num_label_features,
@@ -81,45 +105,37 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
         inputs_embeds = model.encoder.embed_tokens(batch_x),
         return_dict = True
     )
-    
-    ################### Analyze This ########################
-    # This is where KV caching is critical for speed.
+
+    final_encoder_state = encoder_outputs.last_hidden_state[:, -1:, :]
+    decoder_single_timestep_input = model.bos_projector(final_encoder_state)
+
     past_key_values = None
 
     for i in range(num_label_timesteps):
-        # 4. Pass the current decoder input to the decoder
-        # Use KV caching to only compute attention for the new token
         outputs = model(
             encoder_outputs = encoder_outputs,
-            decoder_inputs_embeds = model.decoder.embed_tokens(bos),
+            decoder_inputs_embeds = model.decoder.embed_tokens(decoder_single_timestep_input),
             past_key_values = past_key_values,
             use_cache = True,
             output_attentions = extract_attention,
             output_hidden_states = True,
             return_dict = True
         )
-        
-        # 5. Extract the output for the *last* token
-        # This is the new prediction
-        decoder_last_hidden_state = outputs.decoder_hidden_states[-1][:, -1:, :]
 
-        # 6. Apply the final linear layer (lm_head) to get the prediction
-        next_prediction = model.lm_head(decoder_last_hidden_state) # Shape: (batch_size, 1, num_label_features)
+        decoder_last_hidden_state = outputs.decoder_hidden_states[-1][:, -1:, :]
+        next_prediction = model.lm_head(decoder_last_hidden_state)    # Shape: (batch_size, 1, num_label_features)
 
         preds[:, i, :] = next_prediction.squeeze(1)
 
-        # 8. Update past_key_values for the next iteration
-        # This is the core of KV caching
+        # KV Caching
         past_key_values = outputs.past_key_values
 
-        # 9. The prediction for the current step becomes the input for the next step
-        bos = next_prediction
-    ################### Analyze This ########################
+        decoder_single_timestep_input = next_prediction
 
     return preds
 
 
-def validate(model, criterion, r2, data_loader, device, epoch, total_epochs):
+def validate(model, criterion, r2, per_timestep_r2, data_loader, device, epoch, total_epochs):
     '''
         Validate for a single epoch
     '''
@@ -137,6 +153,8 @@ def validate(model, criterion, r2, data_loader, device, epoch, total_epochs):
             batch_x = batch_x.to(device)
             batch_y = batch_y.to(device)
 
+            _, num_label_timesteps, _ = batch_y.shape
+
             preds = autoregress(
                 model = model,
                 batch_x = batch_x,
@@ -152,11 +170,32 @@ def validate(model, criterion, r2, data_loader, device, epoch, total_epochs):
                 batch_y.view(batch_y.shape[0], -1)
             )
             progress_bar.set_postfix({"val_loss": f"{loss.item():.6f}"})
+            for t in range(num_label_timesteps):
+                per_timestep_r2[t].update(
+                    preds[:, t, :],
+                    batch_y[:, t, :]
+                )
 
     avg_loss = val_loss / num_batches
-    avg_r2 = r2.compute()
+    avg_r2 = r2.compute().item()
     r2.reset()
-    print(f"Epoch [{epoch + 1}/{total_epochs}], Val Loss: {avg_loss:.6f}, Val R2: {avg_r2:.6f}\n")
+
+    timestep_r2s = np.array([r2.compute().item() for r2 in per_timestep_r2])
+    for r2 in per_timestep_r2:
+        r2.reset()
+
+    print(f"Epoch [{epoch + 1}/{total_epochs}], Val Loss: {avg_loss:.6f}, Val R2: {avg_r2:.6f}")
+
+    sorted_idxs = np.argsort(timestep_r2s)
+    print("\nWorst 5 Time-Steps Val R2:")
+    for idx in sorted_idxs[:5]:
+        print(f"    Time-step {idx + 1}: R2 = {timestep_r2s[idx]:.6f}")
+
+    print("Best 5 Time-Steps Val R2:")
+    for idx in sorted_idxs[-5:][::-1]:
+        print(f"    Time-step {idx + 1}: R2 = {timestep_r2s[idx]:.6f}")
+
+    print("\n-----------------------------------------------------------------\n")
 
     return avg_loss, avg_r2
 

@@ -25,10 +25,10 @@
         "u_list"
     ],
     "positional_encoding_max_len": 5000,
-    "embedding_dim": 64,
+    "embedding_dim": 128,
     "num_attention_head": 8,
-    "num_encoder_layers": 2,
-    "num_decoder_layers": 2,
+    "num_encoder_layers": 5,
+    "num_decoder_layers": 5,
     "position_wise_nn_dim": 64,
     "dropout": 0.5,
     "batch_size": 64,
