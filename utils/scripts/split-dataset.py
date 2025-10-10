@@ -2,10 +2,11 @@ import polars as pl
 import numpy as np
 import json
 
-with open("./params.json", mode = "r", encoding = "utf-8") as f:
+# Use full path instead of ~
+with open("~/Documents/Thesis/src/params.json", mode = "r", encoding = "utf-8") as f:
     data = json.load(f)
     seed_val = data["seed_val"]
-    dataset_path = data["dataset_path"]
+    dataset_path = "~/Documents/Thesis/src/dataset/reversalData_minor.csv"
     train_ratio = 0.7
     val_ratio = 0.2
     test_ratio = 0.1

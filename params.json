@@ -1,13 +1,13 @@
 {
     "seed_val": 7,
-    "model_path": "./models/transformer-deterministic-100-50-300.pt",
+    "model_path": "./models/transformer-100-50-10.pt",
     "dataset_path": {
-        "train": "./dataset/deterministic-dataset-train.csv",
-        "validation": "./dataset/deterministic-dataset-val.csv",
-        "test": "./dataset/deterministic-dataset-test.csv"
+        "train": "./dataset/reversalData_minor-train.csv",
+        "validation": "./dataset/reversalData_minor-val.csv",
+        "test": "./dataset/reversalData_minor-test.csv"
     },
     "num_single_sample_timesteps": 1000,
-    "window_stride": 300,
+    "window_stride": 10,
     "input_window_length": 100,
     "label_window_length": 50,
     "input_features": [
@@ -15,14 +15,16 @@
         "b_e",
         "psi_plus",
         "b_plus",
-        "u_list"
+        "u_list",
+        "eta_list"
     ],
     "label_features": [
         "psi_e",
         "b_e",
         "psi_plus",
         "b_plus",
-        "u_list"
+        "u_list",
+        "eta_list"
     ],
     "positional_encoding_max_len": 5000,
     "embedding_dim": 128,
@@ -31,7 +33,7 @@
     "num_decoder_layers": 5,
     "position_wise_nn_dim": 64,
     "dropout": 0.5,
-    "batch_size": 64,
-    "epochs": 10,
-    "learning_rate": 0.0001
+    "batch_size": 128,
+    "epochs": 15,
+    "learning_rate": 0.0005
 }

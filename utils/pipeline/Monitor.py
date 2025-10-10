@@ -1,7 +1,7 @@
 
 
 class Overfit:
-    def __init__(self, start_epoch = 10, threshold = 0.005, patience = 3):
+    def __init__(self, start_epoch = 10, threshold = 0.003, patience = 3):
         self.start_epoch = start_epoch
         self.threshold = threshold
         self.patience = patience

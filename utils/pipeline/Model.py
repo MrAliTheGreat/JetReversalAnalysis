@@ -32,13 +32,8 @@ class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
         # self.bos_token = torch.nn.Parameter(torch.empty(1, 1, output_dim))
         # torch.nn.init.normal_(self.bos_token, mean = 0.0, std = 1.0)
 
+        # Longer training with a single layer! Should TRY this!
         # self.bos_projector = torch.nn.Linear(d_model, output_dim)
-        # self.bos_projector = torch.nn.Sequential(
-        #     torch.nn.Linear(d_model, d_model),
-        #     torch.nn.LeakyReLU(),
-        #     torch.nn.Linear(d_model, output_dim)
-        # )
-
         self.bos_projector = torch.nn.Sequential(
             torch.nn.Linear(d_model, d_model),
             torch.nn.LeakyReLU(),
