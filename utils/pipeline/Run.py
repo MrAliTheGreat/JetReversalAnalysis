@@ -1,6 +1,7 @@
 from tqdm import tqdm
 import torch
 import numpy as np
+from transformers import EncoderDecoderCache
 
 
 
@@ -26,8 +27,8 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device,
 
         # bos = model.bos_token.expand(num_label_batch_samples, -1, -1)
 
-        encoder_outputs = model.encoder(
-            inputs_embeds = model.encoder.embed_tokens(batch_x),
+        encoder_outputs = model.model.encoder(
+            inputs_embeds = model.model.encoder.embed_tokens(batch_x),
             return_dict = True
         )
 
@@ -39,7 +40,9 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device,
         optimizer.zero_grad()
         outputs = model(
             encoder_outputs = encoder_outputs,
-            decoder_inputs_embeds = model.decoder.embed_tokens(decoder_input),
+            decoder_inputs_embeds = model.model.decoder.embed_tokens(decoder_input),
+            output_attentions = False,
+            return_dict = True
         )
 
         loss = criterion(outputs.logits, batch_y)   # logits is preds
@@ -101,8 +104,8 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
         device = device
     )
 
-    encoder_outputs = model.encoder(
-        inputs_embeds = model.encoder.embed_tokens(batch_x),
+    encoder_outputs = model.model.encoder(
+        inputs_embeds = model.model.encoder.embed_tokens(batch_x),
         return_dict = True
     )
 
@@ -114,7 +117,7 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
     for i in range(num_label_timesteps):
         outputs = model(
             encoder_outputs = encoder_outputs,
-            decoder_inputs_embeds = model.decoder.embed_tokens(decoder_single_timestep_input),
+            decoder_inputs_embeds = model.model.decoder.embed_tokens(decoder_single_timestep_input),
             past_key_values = past_key_values,
             use_cache = True,
             output_attentions = extract_attention,

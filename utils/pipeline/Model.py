@@ -1,31 +1,39 @@
-from transformers import T5Config, T5ForConditionalGeneration
+from transformers import BartConfig, BartForConditionalGeneration
 import torch
 
-class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
-    def __init__(self, input_dim, output_dim, d_model, num_head, num_encoder_layers, num_decoder_layers, position_wise_ffn_dim, dropout):
+class TimeSeriesHuggingFaceTransformer(BartForConditionalGeneration):
+    def __init__(
+            self,
+            input_dim,
+            output_dim,
+            d_model,
+            num_head,
+            num_encoder_layers,
+            num_decoder_layers,
+            position_wise_ffn_dim,
+            dropout,
+            positional_encoding_max_len
+        ):
         # batch_first = True in all huggingface models
-        config = T5Config(
-            vocab_size = 1,                                                 # No vocab --> = 1 is placeholder
+        config = BartConfig(
+            vocab_size = 1,                                                        # No vocab --> = 1 is placeholder
+            pad_token_id = 0,                                                      # No vocab --> = 0 is placeholder
             d_model = d_model,
-            num_heads = num_head,
-            num_layers = num_encoder_layers,
-            num_decoder_layers = num_decoder_layers,
+            encoder_layers = num_encoder_layers,
+            decoder_layers = num_decoder_layers,
+            encoder_attention_heads = num_head,
+            decoder_attention_heads = num_head,
             d_ff = position_wise_ffn_dim,
             dropout = dropout,
-            decoder_start_token_id = 0,
-            tie_word_embeddings = False,
-            relative_attention_num_buckets = 32, 
-            d_kv = d_model // num_head,
-
-            output_attention = True                                         # To get multi-head attentions (num_attention_head values each)
+            max_position_embeddings = positional_encoding_max_len,
         )
         
-        super().__init__(config)                                            # Creates model with random weights
+        super().__init__(config)                                                  # Creates model with random weights
 
-        self.encoder.embed_tokens = torch.nn.Linear(input_dim, d_model)     # Embedding layer for input
-        self.decoder.embed_tokens = torch.nn.Linear(output_dim, d_model)    # Embedding layer for output
+        self.model.encoder.embed_tokens = torch.nn.Linear(input_dim, d_model)     # Embedding layer for input
+        self.model.decoder.embed_tokens = torch.nn.Linear(output_dim, d_model)    # Embedding layer for output
         
-        self.lm_head = torch.nn.Linear(d_model, output_dim, bias = False)   # Last linear before output
+        self.lm_head = torch.nn.Linear(d_model, output_dim)                       # Last linear before output
         
         self.output_dim = output_dim
 
@@ -35,8 +43,6 @@ class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
         # Longer training with a single layer! Should TRY this!
         # self.bos_projector = torch.nn.Linear(d_model, output_dim)
         self.bos_projector = torch.nn.Sequential(
-            torch.nn.Linear(d_model, d_model),
-            torch.nn.LeakyReLU(),
             torch.nn.Linear(d_model, d_model),
             torch.nn.LeakyReLU(),
             torch.nn.Linear(d_model, output_dim)
