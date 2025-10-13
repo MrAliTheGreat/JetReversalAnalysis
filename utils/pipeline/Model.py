@@ -63,14 +63,14 @@ class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
         )
 
         if(outputs.encoder_attentions):
-            self.attention_weights["encoder_attention"].append(torch.stack(outputs.encoder_attentions, dim = 0))
+            self.attention_weights["encoder_attention"].append(torch.stack(outputs.encoder_attentions, dim = 0).detach().cpu())
             
         if(outputs.decoder_attentions):
-            self.attention_weights["decoder_attention"].append(torch.stack(outputs.decoder_attentions, dim = 0))
+            self.attention_weights["decoder_attention"].append(torch.stack(outputs.decoder_attentions, dim = 0).detach().cpu())
             
         if(outputs.cross_attentions):
             # Encoder-Decoder Attention
-            self.attention_weights["cross_attention"].append(torch.stack(outputs.cross_attentions, dim = 0))
+            self.attention_weights["cross_attention"].append(torch.stack(outputs.cross_attentions, dim = 0).detach().cpu())
 
         return outputs
     

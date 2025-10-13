@@ -31,7 +31,7 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device,
             return_dict = True
         )
 
-        final_encoder_state = encoder_outputs.last_hidden_state[:, -1:, :]
+        final_encoder_state = encoder_outputs.last_hidden_state.mean(dim = 1, keepdim = True)
         bos = model.bos_projector(final_encoder_state)
 
         decoder_input = torch.cat([bos, batch_y[:, :-1, :]], dim = 1)    # Shift right with one bos
@@ -106,7 +106,7 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
         return_dict = True
     )
 
-    final_encoder_state = encoder_outputs.last_hidden_state[:, -1:, :]
+    final_encoder_state = encoder_outputs.last_hidden_state.mean(dim = 1, keepdim = True)
     decoder_single_timestep_input = model.bos_projector(final_encoder_state)
 
     past_key_values = None
@@ -118,12 +118,14 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
             past_key_values = past_key_values,
             use_cache = True,
             output_attentions = extract_attention,
-            output_hidden_states = True,
+            # output_hidden_states = True,
             return_dict = True
         )
 
-        decoder_last_hidden_state = outputs.decoder_hidden_states[-1][:, -1:, :]
-        next_prediction = model.lm_head(decoder_last_hidden_state)    # Shape: (batch_size, 1, num_label_features)
+        # decoder_last_hidden_state = outputs.decoder_hidden_states[-1][:, -1:, :]
+        # next_prediction = model.lm_head(decoder_last_hidden_state)    # Shape: (batch_size, 1, num_label_features)
+
+        next_prediction = outputs.logits
 
         preds[:, i, :] = next_prediction.squeeze(1)
 

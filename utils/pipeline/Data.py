@@ -24,9 +24,9 @@ def get_mean_std(dataset_path, cols):
         .select(
             cols
         )
-        .with_columns(
+        .with_columns([
             pl.col(col).str.json_decode(dtype = pl.List(pl.Float32)) for col in cols if col != "eta_list"
-        )
+        ])
         # .with_columns(
         #     pl.col("eta_list")
         #     .str.json_decode(dtype = pl.List(pl.List(pl.Float32)))
@@ -69,14 +69,14 @@ def get_mean_std_respected_temporal(dataset_path, cols, num_single_sample_timest
         .select(
             cols
         )
-        .with_columns(
+        .with_columns([
             pl.col(col).str.json_decode(dtype = pl.List(pl.Float32)) for col in cols if col != "eta_list"
-        )
-        .with_columns(
-            pl.col("eta_list")
-            .str.json_decode(dtype = pl.List(pl.List(pl.Float32)))
-            .list.eval(pl.element().flatten())
-        )
+        ])
+        # .with_columns(
+        #     pl.col("eta_list")
+        #     .str.json_decode(dtype = pl.List(pl.List(pl.Float32)))
+        #     .list.eval(pl.element().flatten())
+        # )
         .explode("*")
         .with_columns([
             pl.arange(0, pl.count()).alias("row_idx")
@@ -145,15 +145,19 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
         self.label_window_length = label_window_length
         self.valid_length = self.input_window_length + self.label_window_length
         self.chunk_size = chunk_size
-        self.inferece = inference
+        self.inference = inference
 
         # self.means = self.dict2numpy(stats["mean"], input_features)
         # self.stds = self.dict2numpy(stats["std"], input_features)
         # self.stds[self.stds == 0] = 10 ** -8
 
-        self.means = self.pl2numpy(stats, input_features, "mean")
-        self.stds = self.pl2numpy(stats, input_features, "std")
-        self.stds[self.stds == 0] = 10 ** -8
+        self.input_means = self.pl2numpy(stats, input_features, "mean")
+        self.input_stds = self.pl2numpy(stats, input_features, "std")
+        self.input_stds[self.input_stds == 0] = 10 ** -8
+
+        self.label_means = self.pl2numpy(stats, label_features, "mean")
+        self.label_stds = self.pl2numpy(stats, label_features, "std")
+        self.label_stds[self.label_stds == 0] = 10 ** -8
 
     @staticmethod
     def dict2numpy(d, cols):
@@ -179,13 +183,17 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
             data_chunk = new_chunk[0]
             data_chunk = (
                 data_chunk
-                .drop(["id", "eps", "n_0_squared"])    # No eps or n_0_squared!
-                .select(
-                    pl.col("*").str.json_decode()
-                )
+                .drop(["id"])    # No eps or n_0_squared!
                 .with_columns(
-                    eta_list = pl.col("eta_list").list.eval(pl.element().flatten(), parallel = True)
+                    pl.col(feature)
+                    .str.json_decode(dtype = pl.List(pl.Float32))
+                    for feature in self.input_features if feature != "eta_list"
                 )
+                # .with_columns(
+                #     pl.col("eta_list")
+                #     .str.json_decode(dtype = pl.List(pl.List(pl.Float32)))
+                #     .list.eval(pl.element().flatten())
+                # )
             )
             input_df = data_chunk.select(self.input_features).explode("*").to_numpy().reshape(data_chunk.shape[0], self.num_single_sample_timesteps, len(self.input_features))
             label_df = data_chunk.select(self.label_features).explode("*").to_numpy().reshape(data_chunk.shape[0], self.num_single_sample_timesteps, len(self.label_features))
@@ -200,15 +208,15 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
                     label_window = label_df[time_series_idx, label_window_start_idx: label_window_start_idx + self.label_window_length, :]
                     label_full = label_df[time_series_idx, :, :]
                     
-                    input_window = (input_window - self.means[i, :]) / self.stds[i, :]
-                    label_window = (label_window - self.means[i, :]) / self.stds[i, :]
+                    input_window = (input_window - self.input_means[i, :]) / self.input_stds[i, :]
+                    label_window = (label_window - self.label_means[i, :]) / self.label_stds[i, :]
                     # label_full = (label_full - self.means) / self.stds
     
                     input_window = torch.tensor(input_window, dtype = torch.float)
                     label_window = torch.tensor(label_window, dtype = torch.float)
                     label_full = torch.tensor(label_full, dtype = torch.float)
 
-                    if(self.inferece):
+                    if(self.inference):
                         yield input_window, label_window, label_full
                     else:
                         yield input_window, label_window
