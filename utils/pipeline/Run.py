@@ -1,7 +1,6 @@
 from tqdm import tqdm
 import torch
 import numpy as np
-from transformers import EncoderDecoderCache
 
 
 
@@ -23,29 +22,38 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device,
         batch_x = batch_x.to(device)
         batch_y = batch_y.to(device)
 
+        # num_input_batch_samples, num_input_timesteps, _ = batch_x.shape
+        # num_label_batch_samples, num_label_timesteps, _ = batch_y.shape
         _, num_label_timesteps, _ = batch_y.shape
 
-        # bos = model.bos_token.expand(num_label_batch_samples, -1, -1)
+        optimizer.zero_grad()
 
-        encoder_outputs = model.model.encoder(
-            inputs_embeds = model.model.encoder.embed_tokens(batch_x),
+        # encoder_positions = torch.arange(num_input_timesteps, device = device)
+        # encoder_pos_embeds = model.encoder_pos_embedding(encoder_positions).unsqueeze(0).expand(num_input_batch_samples, -1, -1)
+        encoder_pe = model.input_pe.unsqueeze(0).to(device)
+
+        encoder_outputs = model.encoder(
+            inputs_embeds = model.encoder.embed_tokens(batch_x) + encoder_pe,
             return_dict = True
         )
 
-        final_encoder_state = encoder_outputs.last_hidden_state.mean(dim = 1, keepdim = True)
-        bos = model.bos_projector(final_encoder_state)
+        final_timestep_encoder_state = encoder_outputs.last_hidden_state[:, -1:, :]
+        bos = model.bos_projector(final_timestep_encoder_state)
+        # bos = model.bos_token.expand(num_input_batch_samples, -1, -1) 
 
         decoder_input = torch.cat([bos, batch_y[:, :-1, :]], dim = 1)    # Shift right with one bos
 
-        optimizer.zero_grad()
+        # decoder_positions = torch.arange(num_label_timesteps, device = device) 
+        # decoder_pos_embeds = model.decoder_pos_embedding(decoder_positions).unsqueeze(0).expand(num_label_batch_samples, -1, -1)
+        decoder_pe = model.output_pe.unsqueeze(0).to(device)
+
         outputs = model(
             encoder_outputs = encoder_outputs,
-            decoder_inputs_embeds = model.model.decoder.embed_tokens(decoder_input),
-            output_attentions = False,
-            return_dict = True
+            decoder_inputs_embeds = model.decoder.embed_tokens(decoder_input) + decoder_pe,
+            output_attentions = False
         )
-
-        loss = criterion(outputs.logits, batch_y)   # logits is preds
+ 
+        loss = criterion(outputs.logits, batch_y)    # logits are predictions
         loss.backward()
         optimizer.step()
 
@@ -66,9 +74,9 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device,
     avg_r2 = r2.compute().item()
     r2.reset()
 
-    timestep_r2s = np.array([r2.compute().item() for r2 in per_timestep_r2])
-    for r2 in per_timestep_r2:
-        r2.reset()
+    timestep_r2s = np.array([_r2.compute().item() for _r2 in per_timestep_r2])
+    for _r2 in per_timestep_r2:
+        _r2.reset()
 
     print(f"Epoch [{epoch + 1}/{total_epochs}], Train Loss: {avg_loss:.6f}, Train R2: {avg_r2:.6f}")
 
@@ -94,9 +102,13 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
             "cross_attention": []
         }
 
-    num_label_batch_samples, num_label_timesteps, num_label_features = batch_y.shape    # num_label_features == len(label_features)
+    # num_label_features == len(label_features)
+    num_input_batch_samples, num_input_timesteps, _ = batch_x.shape
+    num_label_batch_samples, num_label_timesteps, num_label_features = batch_y.shape
 
-    # decoder_single_timestep_input = model.bos_token.expand(num_label_batch_samples, -1, -1)
+    # encoder_positions = torch.arange(num_input_timesteps, device = device)
+    # encoder_pos_embeds = model.encoder_pos_embedding(encoder_positions).unsqueeze(0).expand(num_input_batch_samples, -1, -1)  
+    encoder_pe = model.input_pe.unsqueeze(0).to(device)
 
     preds = torch.zeros(
         num_label_batch_samples, num_label_timesteps, num_label_features,
@@ -104,20 +116,26 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
         device = device
     )
 
-    encoder_outputs = model.model.encoder(
-        inputs_embeds = model.model.encoder.embed_tokens(batch_x),
+    encoder_outputs = model.encoder(
+        inputs_embeds = model.encoder.embed_tokens(batch_x) + encoder_pe,
         return_dict = True
     )
 
-    final_encoder_state = encoder_outputs.last_hidden_state.mean(dim = 1, keepdim = True)
+    final_encoder_state = encoder_outputs.last_hidden_state[:, -1:, :]
     decoder_single_timestep_input = model.bos_projector(final_encoder_state)
+    # decoder_single_timestep_input = model.bos_token.expand(num_input_batch_samples, -1, -1)
+
+    decoder_pe = model.output_pe.unsqueeze(0).to(device)
 
     past_key_values = None
 
     for i in range(num_label_timesteps):
+        # cur_time_step = torch.tensor([i], device = device)
+        # decoder_pos_embed = model.decoder_pos_embedding(cur_time_step).unsqueeze(0).expand(num_label_batch_samples, -1, -1) 
+
         outputs = model(
             encoder_outputs = encoder_outputs,
-            decoder_inputs_embeds = model.model.decoder.embed_tokens(decoder_single_timestep_input),
+            decoder_inputs_embeds = model.decoder.embed_tokens(decoder_single_timestep_input) + decoder_pe[:, i:i+1, :],
             past_key_values = past_key_values,
             use_cache = True,
             output_attentions = extract_attention,
@@ -185,9 +203,9 @@ def validate(model, criterion, r2, per_timestep_r2, data_loader, device, epoch, 
     avg_r2 = r2.compute().item()
     r2.reset()
 
-    timestep_r2s = np.array([r2.compute().item() for r2 in per_timestep_r2])
-    for r2 in per_timestep_r2:
-        r2.reset()
+    timestep_r2s = np.array([_r2.compute().item() for _r2 in per_timestep_r2])
+    for _r2 in per_timestep_r2:
+        _r2.reset()
 
     print(f"Epoch [{epoch + 1}/{total_epochs}], Val Loss: {avg_loss:.6f}, Val R2: {avg_r2:.6f}")
 

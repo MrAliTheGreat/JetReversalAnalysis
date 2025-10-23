@@ -72,7 +72,7 @@ def get_mean_std_respected_temporal(dataset_path, cols, num_single_sample_timest
         .with_columns([
             pl.col(col).str.json_decode(dtype = pl.List(pl.Float32)) for col in cols if col != "eta_list"
         ])
-        # .with_columns(
+        # .with_columns(    # eta dataset
         #     pl.col("eta_list")
         #     .str.json_decode(dtype = pl.List(pl.List(pl.Float32)))
         #     .list.eval(pl.element().flatten())
@@ -183,13 +183,13 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
             data_chunk = new_chunk[0]
             data_chunk = (
                 data_chunk
-                .drop(["id"])    # No eps or n_0_squared!
+                .drop(["id", "eps", "n_0_squared"])    # No eps or n_0_squared!
                 .with_columns(
                     pl.col(feature)
                     .str.json_decode(dtype = pl.List(pl.Float32))
                     for feature in self.input_features if feature != "eta_list"
                 )
-                # .with_columns(
+                # .with_columns(    # eta dataset
                 #     pl.col("eta_list")
                 #     .str.json_decode(dtype = pl.List(pl.List(pl.Float32)))
                 #     .list.eval(pl.element().flatten())

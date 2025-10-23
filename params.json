@@ -1,13 +1,13 @@
 {
     "seed_val": 7,
-    "model_path": "./models/transformer-deterministic-100-50-300.pt",
+    "model_path": "./models/transformer-deterministic-100-50-200.pt",
     "dataset_path": {
         "train": "./dataset/deterministic-dataset-train.csv",
         "validation": "./dataset/deterministic-dataset-val.csv",
         "test": "./dataset/deterministic-dataset-test.csv"
     },
     "num_single_sample_timesteps": 1000,
-    "window_stride": 300,
+    "window_stride": 200,
     "input_window_length": 100,
     "label_window_length": 50,
     "input_features": [
@@ -24,14 +24,14 @@
         "b_plus",
         "u_list"
     ],
-    "positional_encoding_max_len": 5000,
+    "relative_attention_num_buckets": 64,
     "embedding_dim": 128,
-    "num_attention_head": 4,
-    "num_encoder_layers": 1,
-    "num_decoder_layers": 1,
+    "num_attention_head": 8,
+    "num_encoder_layers": 5,
+    "num_decoder_layers": 5,
     "position_wise_nn_dim": 64,
     "dropout": 0.5,
     "batch_size": 128,
-    "epochs": 5,
+    "epochs": 25,
     "learning_rate": 0.0005
 }

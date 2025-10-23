@@ -1,52 +1,74 @@
-from transformers import BartConfig, BartForConditionalGeneration
-import torch
+from transformers import T5Config, T5ForConditionalGeneration
+import torch, math
 
-class TimeSeriesHuggingFaceTransformer(BartForConditionalGeneration):
+class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
     def __init__(
-            self,
-            input_dim,
-            output_dim,
-            d_model,
-            num_head,
-            num_encoder_layers,
-            num_decoder_layers,
-            position_wise_ffn_dim,
-            dropout,
-            positional_encoding_max_len
-        ):
+        self,
+        input_window_len,
+        output_window_len,
+        input_dim,
+        output_dim,
+        d_model,
+        num_head,
+        num_encoder_layers,
+        num_decoder_layers,
+        position_wise_ffn_dim,
+        relative_attention_num_buckets,
+        dropout
+    ):
         # batch_first = True in all huggingface models
-        config = BartConfig(
-            vocab_size = 1,                                                        # No vocab --> = 1 is placeholder
-            pad_token_id = 0,                                                      # No vocab --> = 0 is placeholder
+        config = T5Config(
+            vocab_size = 1,                                                 # No vocab --> = 1 is placeholder
             d_model = d_model,
-            encoder_layers = num_encoder_layers,
-            decoder_layers = num_decoder_layers,
-            encoder_attention_heads = num_head,
-            decoder_attention_heads = num_head,
+            num_heads = num_head,
+            num_layers = num_encoder_layers,
+            num_decoder_layers = num_decoder_layers,
             d_ff = position_wise_ffn_dim,
             dropout = dropout,
-            max_position_embeddings = positional_encoding_max_len,
+            decoder_start_token_id = 0,
+            tie_word_embeddings = False,
+            relative_attention_num_buckets = relative_attention_num_buckets, 
+            d_kv = d_model // num_head,
         )
         
-        super().__init__(config)                                                  # Creates model with random weights
+        super().__init__(config)                                            # Creates model with random weights
 
-        self.model.encoder.embed_tokens = torch.nn.Linear(input_dim, d_model)     # Embedding layer for input
-        self.model.decoder.embed_tokens = torch.nn.Linear(output_dim, d_model)    # Embedding layer for output
-        
-        self.lm_head = torch.nn.Linear(d_model, output_dim)                       # Last linear before output
-        
         self.output_dim = output_dim
+
+        self.encoder.embed_tokens = torch.nn.Linear(input_dim, d_model)     # Embedding layer for input
+        self.decoder.embed_tokens = torch.nn.Linear(output_dim, d_model)    # Embedding layer for output
+        
+        self.lm_head = torch.nn.Linear(d_model, output_dim, bias = False)   # Last linear before output
 
         # self.bos_token = torch.nn.Parameter(torch.empty(1, 1, output_dim))
         # torch.nn.init.normal_(self.bos_token, mean = 0.0, std = 1.0)
 
-        # Longer training with a single layer! Should TRY this!
         # self.bos_projector = torch.nn.Linear(d_model, output_dim)
         self.bos_projector = torch.nn.Sequential(
             torch.nn.Linear(d_model, d_model),
             torch.nn.LeakyReLU(),
             torch.nn.Linear(d_model, output_dim)
         )
+
+        input_pos = torch.arange(input_window_len, dtype = torch.float32).unsqueeze(1)
+        output_pos = torch.arange(output_window_len, dtype = torch.float32).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+
+        input_pe = torch.zeros(input_window_len, d_model)
+        input_pe[:, 0::2] = torch.sin(input_pos * div_term)
+        input_pe[:, 1::2] = torch.cos(input_pos * div_term)
+        self.register_buffer("input_pe", input_pe)
+
+        output_pe = torch.zeros(output_window_len, d_model)
+        output_pe[:, 0::2] = torch.sin(output_pos * div_term)
+        output_pe[:, 1::2] = torch.cos(output_pos * div_term)
+        self.register_buffer("output_pe", output_pe)
+
+        # self.encoder_pos_embedding = torch.nn.Embedding(input_window_len, d_model)
+        # self.encoder_pos_embedding.weight.data.copy_(input_pe)
+
+        # self.decoder_pos_embedding = torch.nn.Embedding(output_window_len, d_model)
+        # self.decoder_pos_embedding.weight.data.copy_(output_pe)
 
         self.attention_weights = {
             "encoder_attention": [],
@@ -91,3 +113,4 @@ class TimeSeriesHuggingFaceTransformer(BartForConditionalGeneration):
         '''
 
         return torch.stack(self.attention_weights[attention_type], dim = 0).squeeze_(dim = 2).squeeze_(dim = 3).mean(dim = 1).mean(dim = 1).cpu().numpy()
+    
