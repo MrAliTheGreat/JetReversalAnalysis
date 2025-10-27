@@ -633,3 +633,148 @@ learning_rate: 0.0005
 psi_e, b_e, psi_plus, b_plus, u_list, eta_list -> psi_e, b_e, psi_plus, b_plus, u_list
 
 ==========================================
+2025-10-27-12:23:27.320846
+./models/transformer-100-50-10-0.pt
+
+Training Loss: 0.020862699126515595, Training R2: 0.9832220673561096
+Validation Loss: 0.4520610667369216, Validation R2: 0.653794527053833
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: MSE
+seed_val: 0
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 10
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 20
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list, eta_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-27-12:55:36.057869
+./models/transformer-100-50-10-5.pt
+
+Training Loss: 0.020855963658775244, Training R2: 0.9832144975662231
+Validation Loss: 0.4480831965732114, Validation R2: 0.6569418907165527
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: MSE
+seed_val: 5
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 10
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 20
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list, eta_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-27-13:26:59.135510
+./models/transformer-100-50-10-10.pt
+
+Training Loss: 0.020977260864429394, Training R2: 0.9831317663192749
+Validation Loss: 0.44743848912381895, Validation R2: 0.6592037677764893
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: MSE
+seed_val: 10
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 10
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 20
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list, eta_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-27-14:10:24.294978
+./models/transformer-100-50-10-15.pt
+
+Training Loss: 0.02078940832891308, Training R2: 0.983275830745697
+Validation Loss: 0.4570969289915573, Validation R2: 0.6554281115531921
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: MSE
+seed_val: 15
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 10
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 20
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list, eta_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-27-14:47:33.722464
+./models/transformer-100-50-10-20.pt
+
+Training Loss: 0.02081387650190412, Training R2: 0.9832426905632019
+Validation Loss: 0.4162738103653498, Validation R2: 0.6782297492027283
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: MSE
+seed_val: 20
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 10
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 20
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list, eta_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================

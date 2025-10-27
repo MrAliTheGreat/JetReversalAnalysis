@@ -1,13 +1,13 @@
 {
-    "seed_val": 7,
-    "model_path": "./models/transformer-50-50-10.pt",
+    "seed_val": 20,
+    "model_path": "./models/transformer-100-50-10-20.pt",
     "dataset_path": {
         "train": "./dataset/reversalData_minor-train.csv",
         "validation": "./dataset/reversalData_minor-val.csv",
         "test": "./dataset/reversalData_minor-test.csv"
     },
     "num_single_sample_timesteps": 1000,
-    "input_window_length": 50,
+    "input_window_length": 100,
     "label_window_length": 50,
     "window_stride": 10,
     "input_features": [
@@ -33,6 +33,6 @@
     "position_wise_nn_dim": 64,
     "dropout": 0.5,
     "batch_size": 128,
-    "epochs": 5,
+    "epochs": 20,
     "learning_rate": 0.0005
 }
