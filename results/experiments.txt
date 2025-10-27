@@ -314,3 +314,322 @@ learning_rate: 0.0005
 psi_e, b_e, psi_plus, b_plus, u_list -> psi_e, b_e, psi_plus, b_plus, u_list
 
 ==========================================
+2025-10-23-13:49:59.943472
+./models/transformer-deterministic-100-50-300.pt
+
+Training Loss: -1.5705123699450116, Training R2: 0.9845497012138367
+Validation Loss: -1.4896133919979664, Validation R2: 0.9969297051429749
+
+dataset: deterministic
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: Gaussian negative log likelihood -> mean and var pred for each time-step
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 300
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 15
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-23-16:33:51.486064 Overfitted!!!
+./models/transformer-100-50-2.pt
+
+Training Loss: -0.9428318089353007, Training R2: 0.9809757471084595
+Validation Loss: 100.90923252590949, Validation R2: 0.6127330660820007
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: Gaussian negative log likelihood -> mean and var pred for each time-step
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 2
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 15
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-23-17:28:02.044492
+./models/transformer-100-50-5.pt
+
+Training Loss: -0.7840364223195796, Training R2: 0.9783315658569336
+Validation Loss: 61.97019137083179, Validation R2: 0.5704159140586853
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: Gaussian negative log likelihood -> mean and var pred for each time-step
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 5
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 7
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-23-17:39:25.102290
+./models/transformer-100-50-5.pt
+
+Training Loss: -0.6493741360672733, Training R2: 0.9743571281433105
+Validation Loss: 37.85112863619542, Validation R2: 0.5426886081695557
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: Gaussian negative log likelihood -> mean and var pred for each time-step
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 5
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 3
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-23-17:58:27.052473
+./models/transformer-100-50-10.pt
+
+Training Loss: -0.7027383898508266, Training R2: 0.9765169620513916
+Validation Loss: 39.16112725631051, Validation R2: 0.6117148399353027
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: Gaussian negative log likelihood -> mean and var pred for each time-step
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 10
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 5
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-23-18:04:39.025102
+./models/transformer-100-50-20.pt
+
+Training Loss: -0.6460497023169377, Training R2: 0.9746063947677612
+Validation Loss: 29.516263264876144, Validation R2: 0.6207616329193115
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: Gaussian negative log likelihood -> mean and var pred for each time-step
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 20
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 5
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-23-18:09:39.491383
+./models/transformer-100-50-25.pt
+
+Training Loss: -0.6214668698710938, Training R2: 0.9728001952171326
+Validation Loss: 39.49353842508225, Validation R2: 0.5607725381851196
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: Gaussian negative log likelihood -> mean and var pred for each time-step
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 25
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 5
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-23-18:19:51.436156
+./models/transformer-100-50-50.pt
+
+Training Loss: -0.7411719675858816, Training R2: 0.9771260023117065
+Validation Loss: 35.36924787001176, Validation R2: 0.6715399622917175
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: Gaussian negative log likelihood -> mean and var pred for each time-step
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 50
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 20
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-24-12:24:18.124534
+./models/transformer-100-50-10.pt
+
+Training Loss: -0.6323570067912465, Training R2: 0.974530816078186
+Validation Loss: 32.407139755101596, Validation R2: 0.5945584177970886
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: Gaussian negative log likelihood -> mean and var pred for each time-step
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 100
+label_window_len: 50
+window_stride: 10
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 3
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list, eta_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-24-12:44:32.343878
+./models/transformer-200-50-10.pt
+
+Training Loss: -0.6896029572822094, Training R2: 0.9767630696296692
+Validation Loss: 42.23485252505443, Validation R2: 0.5793358683586121
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: Gaussian negative log likelihood -> mean and var pred for each time-step
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 200
+label_window_len: 50
+window_stride: 10
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 5
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list, eta_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
+2025-10-24-12:59:39.683179
+./models/transformer-50-50-10.pt
+
+Training Loss: -0.7119453173514092, Training R2: 0.9765199422836304
+Validation Loss: 33.26503161426004, Validation R2: 0.637596607208252
+
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: Gaussian negative log likelihood -> mean and var pred for each time-step
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 50
+label_window_len: 50
+window_stride: 10
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 5
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list, eta_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================

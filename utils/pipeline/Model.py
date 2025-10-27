@@ -38,7 +38,7 @@ class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
         self.encoder.embed_tokens = torch.nn.Linear(input_dim, d_model)     # Embedding layer for input
         self.decoder.embed_tokens = torch.nn.Linear(output_dim, d_model)    # Embedding layer for output
         
-        self.lm_head = torch.nn.Linear(d_model, output_dim, bias = False)   # Last linear before output
+        self.lm_head = torch.nn.Linear(d_model, output_dim * 2, bias = False)   # Last linear before output
 
         # self.bos_token = torch.nn.Parameter(torch.empty(1, 1, output_dim))
         # torch.nn.init.normal_(self.bos_token, mean = 0.0, std = 1.0)

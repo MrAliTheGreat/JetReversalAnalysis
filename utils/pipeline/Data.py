@@ -62,31 +62,53 @@ def get_mean_std_respected_temporal(dataset_path, cols, num_single_sample_timest
                 std: {col: std_val}
             }
     '''
-    df = (
-        pl.scan_csv(
-            dataset_path
+    if("eta_list" in cols):
+        df = (
+            pl.scan_csv(
+                dataset_path
+            )
+            .select(
+                cols
+            )
+            .with_columns([
+                pl.col(col).str.json_decode(dtype = pl.List(pl.Float32)) for col in cols if col != "eta_list"
+            ])
+            .with_columns(    # eta dataset
+                pl.col("eta_list")
+                .str.json_decode(dtype = pl.List(pl.List(pl.Float32)))
+                .list.eval(pl.element().flatten())
+            )
+            .explode("*")
+            .with_columns([
+                pl.arange(0, pl.count()).alias("row_idx")
+            ])
+            .with_columns([
+                # (pl.col("row_idx") // num_single_sample_timesteps).alias("timeseries_idx"),
+                (pl.col("row_idx") % num_single_sample_timesteps).alias("timestep_idx")
+            ])
+            .drop("row_idx")
         )
-        .select(
-            cols
-        )
-        .with_columns([
-            pl.col(col).str.json_decode(dtype = pl.List(pl.Float32)) for col in cols if col != "eta_list"
-        ])
-        # .with_columns(    # eta dataset
-        #     pl.col("eta_list")
-        #     .str.json_decode(dtype = pl.List(pl.List(pl.Float32)))
-        #     .list.eval(pl.element().flatten())
-        # )
-        .explode("*")
-        .with_columns([
-            pl.arange(0, pl.count()).alias("row_idx")
-        ])
-        .with_columns([
-            # (pl.col("row_idx") // num_single_sample_timesteps).alias("timeseries_idx"),
-            (pl.col("row_idx") % num_single_sample_timesteps).alias("timestep_idx")
-        ])
-        .drop("row_idx")
-    )
+    else:
+        df = (
+            pl.scan_csv(
+                dataset_path
+            )
+            .select(
+                cols
+            )
+            .with_columns([
+                pl.col("*").str.json_decode(dtype = pl.List(pl.Float32))
+            ])
+            .explode("*")
+            .with_columns([
+                pl.arange(0, pl.count()).alias("row_idx")
+            ])
+            .with_columns([
+                # (pl.col("row_idx") // num_single_sample_timesteps).alias("timeseries_idx"),
+                (pl.col("row_idx") % num_single_sample_timesteps).alias("timestep_idx")
+            ])
+            .drop("row_idx")
+        )        
 
     res = []
     agg_exprs = []
@@ -112,7 +134,8 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
     def __init__(
             self,
             dataset_path,
-            stats,
+            input_stats,
+            label_stats,
             input_features,
             label_features,
             num_single_sample_timesteps,
@@ -151,12 +174,12 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
         # self.stds = self.dict2numpy(stats["std"], input_features)
         # self.stds[self.stds == 0] = 10 ** -8
 
-        self.input_means = self.pl2numpy(stats, input_features, "mean")
-        self.input_stds = self.pl2numpy(stats, input_features, "std")
+        self.input_means = self.pl2numpy(input_stats, input_features, "mean")
+        self.input_stds = self.pl2numpy(input_stats, input_features, "std")
         self.input_stds[self.input_stds == 0] = 10 ** -8
 
-        self.label_means = self.pl2numpy(stats, label_features, "mean")
-        self.label_stds = self.pl2numpy(stats, label_features, "std")
+        self.label_means = self.pl2numpy(label_stats, label_features, "mean")
+        self.label_stds = self.pl2numpy(label_stats, label_features, "std")
         self.label_stds[self.label_stds == 0] = 10 ** -8
 
     @staticmethod
@@ -181,20 +204,30 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
                 break
             
             data_chunk = new_chunk[0]
-            data_chunk = (
-                data_chunk
-                .drop(["id", "eps", "n_0_squared"])    # No eps or n_0_squared!
-                .with_columns(
-                    pl.col(feature)
-                    .str.json_decode(dtype = pl.List(pl.Float32))
-                    for feature in self.input_features if feature != "eta_list"
+            if("eta_list" in data_chunk.columns):
+                data_chunk = (
+                    data_chunk
+                    .drop(["id", "eps", "n_0_squared"])    # No eps or n_0_squared!
+                    .with_columns([
+                        pl.col(feature)
+                        .str.json_decode(dtype = pl.List(pl.Float32))
+                        for feature in self.input_features if feature != "eta_list"
+                    ])
+                    .with_columns([
+                        pl.col("eta_list")
+                        .str.json_decode(dtype = pl.List(pl.List(pl.Float32)))
+                        .list.eval(pl.element().flatten())
+                    ])
                 )
-                # .with_columns(    # eta dataset
-                #     pl.col("eta_list")
-                #     .str.json_decode(dtype = pl.List(pl.List(pl.Float32)))
-                #     .list.eval(pl.element().flatten())
-                # )
-            )
+            else:
+                data_chunk = (
+                    data_chunk
+                    .drop(["id", "eps", "n_0_squared"])    # No eps or n_0_squared!
+                    .with_columns([
+                        pl.col("*").str.json_decode(dtype = pl.List(pl.Float32))
+                    ])
+                )
+
             input_df = data_chunk.select(self.input_features).explode("*").to_numpy().reshape(data_chunk.shape[0], self.num_single_sample_timesteps, len(self.input_features))
             label_df = data_chunk.select(self.label_features).explode("*").to_numpy().reshape(data_chunk.shape[0], self.num_single_sample_timesteps, len(self.label_features))
 

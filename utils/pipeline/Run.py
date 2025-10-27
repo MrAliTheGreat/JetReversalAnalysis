@@ -24,7 +24,7 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device,
 
         # num_input_batch_samples, num_input_timesteps, _ = batch_x.shape
         # num_label_batch_samples, num_label_timesteps, _ = batch_y.shape
-        _, num_label_timesteps, _ = batch_y.shape
+        _, num_label_timesteps, num_label_features = batch_y.shape
 
         optimizer.zero_grad()
 
@@ -53,20 +53,23 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device,
             output_attentions = False
         )
  
-        loss = criterion(outputs.logits, batch_y)    # logits are predictions
+        out_mean, out_var = outputs.logits[:, :, :num_label_features], outputs.logits[:, :, num_label_features:]
+        out_var = torch.nn.functional.softplus(out_var) + (10 ** -8)
+
+        loss = criterion(out_mean, batch_y, out_var)    # logits are predictions
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item()
         num_batches += 1
         r2.update(
-            outputs.logits.view(outputs.logits.shape[0], -1),
-            batch_y.view(batch_y.shape[0], -1)
+            out_mean.reshape(out_mean.shape[0], -1),
+            batch_y.reshape(batch_y.shape[0], -1)
         )
         progress_bar.set_postfix({"train_loss": f"{loss.item():.6f}"})
         for t in range(num_label_timesteps):
             per_timestep_r2[t].update(
-                outputs.logits[:, t, :],
+                out_mean[:, t, :],
                 batch_y[:, t, :]
             )
 
@@ -103,7 +106,7 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
         }
 
     # num_label_features == len(label_features)
-    num_input_batch_samples, num_input_timesteps, _ = batch_x.shape
+    # num_input_batch_samples, num_input_timesteps, _ = batch_x.shape
     num_label_batch_samples, num_label_timesteps, num_label_features = batch_y.shape
 
     # encoder_positions = torch.arange(num_input_timesteps, device = device)
@@ -111,7 +114,7 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
     encoder_pe = model.input_pe.unsqueeze(0).to(device)
 
     preds = torch.zeros(
-        num_label_batch_samples, num_label_timesteps, num_label_features,
+        num_label_batch_samples, num_label_timesteps, num_label_features * 2,
         dtype = torch.float,
         device = device
     )
@@ -146,14 +149,16 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
         # decoder_last_hidden_state = outputs.decoder_hidden_states[-1][:, -1:, :]
         # next_prediction = model.lm_head(decoder_last_hidden_state)    # Shape: (batch_size, 1, num_label_features)
 
-        next_prediction = outputs.logits
+        out_mean, out_var = outputs.logits[:, :, :num_label_features], outputs.logits[:, :, num_label_features:]
+        out_var = torch.nn.functional.softplus(out_var) + (10 ** -8)
 
-        preds[:, i, :] = next_prediction.squeeze(1)
+        preds[:, i, :num_label_features] = out_mean.squeeze(1)
+        preds[:, i, num_label_features:] = out_var.squeeze(1)
 
         # KV Caching
         past_key_values = outputs.past_key_values
 
-        decoder_single_timestep_input = next_prediction
+        decoder_single_timestep_input = out_mean
 
     return preds
 
@@ -176,7 +181,7 @@ def validate(model, criterion, r2, per_timestep_r2, data_loader, device, epoch, 
             batch_x = batch_x.to(device)
             batch_y = batch_y.to(device)
 
-            _, num_label_timesteps, _ = batch_y.shape
+            _, num_label_timesteps, num_label_features = batch_y.shape
 
             preds = autoregress(
                 model = model,
@@ -185,17 +190,19 @@ def validate(model, criterion, r2, per_timestep_r2, data_loader, device, epoch, 
                 device = device
             )
 
-            loss = criterion(preds, batch_y)
+            preds_mean, preds_var = preds[:, :, :num_label_features], preds[:, :, num_label_features:]
+
+            loss = criterion(preds_mean, batch_y, preds_var)
             val_loss += loss.item()
             num_batches += 1
             r2.update(
-                preds.view(preds.shape[0], -1),
-                batch_y.view(batch_y.shape[0], -1)
+                preds_mean.reshape(preds_mean.shape[0], -1),
+                batch_y.reshape(batch_y.shape[0], -1)
             )
             progress_bar.set_postfix({"val_loss": f"{loss.item():.6f}"})
             for t in range(num_label_timesteps):
                 per_timestep_r2[t].update(
-                    preds[:, t, :],
+                    preds_mean[:, t, :],
                     batch_y[:, t, :]
                 )
 
