@@ -4,7 +4,7 @@ import numpy as np
 
 
 
-def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device, epoch, total_epochs):
+def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, data_loader, device, epoch, total_epochs):
     '''
         Train for a single epoch
     '''
@@ -24,7 +24,7 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device,
 
         # num_input_batch_samples, num_input_timesteps, _ = batch_x.shape
         # num_label_batch_samples, num_label_timesteps, _ = batch_y.shape
-        _, num_label_timesteps, _ = batch_y.shape
+        _, num_label_timesteps, num_label_features = batch_y.shape
 
         optimizer.zero_grad()
 
@@ -64,6 +64,10 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device,
                 outputs.logits[:, t, :],
                 batch_y[:, t, :]
             )
+        per_feature_r2.update(
+            outputs.logits.reshape(-1, num_label_features),
+            batch_y.reshape(-1, num_label_features)
+        )
 
     avg_loss = train_loss / num_batches
     avg_r2 = r2.compute().item()
@@ -72,6 +76,9 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device,
     timestep_r2s = np.array([_r2.compute().item() for _r2 in per_timestep_r2])
     for _r2 in per_timestep_r2:
         _r2.reset()
+
+    feature_r2s = per_feature_r2.compute().cpu().numpy()
+    per_feature_r2.reset()
 
     print(f"Epoch [{epoch + 1}/{total_epochs}], Train Loss: {avg_loss:.6f}, Train R2: {avg_r2:.6f}")
 
@@ -83,6 +90,9 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, data_loader, device,
     print("Best 5 Time-Steps Train R2:")
     for idx in sorted_idxs[-5:][::-1]:
         print(f"    Time-step {idx + 1}: R2 = {timestep_r2s[idx]:.6f}")
+
+    print("\n Per Feature R2:")
+    print(f"    {[f'{f_r2:.6f}' for f_r2 in feature_r2s]}")
 
     print()
 
@@ -142,7 +152,7 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
     return preds
 
 
-def validate(model, criterion, r2, per_timestep_r2, data_loader, device, epoch, total_epochs):
+def validate(model, criterion, r2, per_timestep_r2, per_feature_r2, data_loader, device, epoch, total_epochs):
     '''
         Validate for a single epoch
     '''
@@ -160,7 +170,7 @@ def validate(model, criterion, r2, per_timestep_r2, data_loader, device, epoch, 
             batch_x = batch_x.to(device)
             batch_y = batch_y.to(device)
 
-            _, num_label_timesteps, _ = batch_y.shape
+            _, num_label_timesteps, num_label_features = batch_y.shape
 
             preds = autoregress(
                 model = model,
@@ -182,6 +192,10 @@ def validate(model, criterion, r2, per_timestep_r2, data_loader, device, epoch, 
                     preds[:, t, :],
                     batch_y[:, t, :]
                 )
+            per_feature_r2.update(
+                preds.reshape(-1, num_label_features),
+                batch_y.reshape(-1, num_label_features)
+            )
 
     avg_loss = val_loss / num_batches
     avg_r2 = r2.compute().item()
@@ -190,6 +204,9 @@ def validate(model, criterion, r2, per_timestep_r2, data_loader, device, epoch, 
     timestep_r2s = np.array([_r2.compute().item() for _r2 in per_timestep_r2])
     for _r2 in per_timestep_r2:
         _r2.reset()
+
+    feature_r2s = per_feature_r2.compute().cpu().numpy()
+    per_feature_r2.reset()
 
     print(f"Epoch [{epoch + 1}/{total_epochs}], Val Loss: {avg_loss:.6f}, Val R2: {avg_r2:.6f}")
 
@@ -201,6 +218,9 @@ def validate(model, criterion, r2, per_timestep_r2, data_loader, device, epoch, 
     print("Best 5 Time-Steps Val R2:")
     for idx in sorted_idxs[-5:][::-1]:
         print(f"    Time-step {idx + 1}: R2 = {timestep_r2s[idx]:.6f}")
+
+    print("\n Per Feature R2:")
+    print(f"    {[f'{f_r2:.6f}' for f_r2 in feature_r2s]}")
 
     print("\n-----------------------------------------------------------------\n")
 

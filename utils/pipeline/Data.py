@@ -222,7 +222,7 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
             else:
                 data_chunk = (
                     data_chunk
-                    .drop(["id", "eps", "n_0_squared"])    # No eps or n_0_squared!
+                    .drop(["id"])    # No eps or n_0_squared!
                     .with_columns([
                         pl.col("*").str.json_decode(dtype = pl.List(pl.Float32))
                     ])
