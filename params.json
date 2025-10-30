@@ -1,6 +1,8 @@
 {
     "seed_val": 30,
-    "model_path": "./models/transformer-100-50-10-30.pt",
+    "seed_vals": [0, 5, 10, 15, 20, 25, 30, 35, 40, 45],
+    "model_path": "./models/transformer-100-50-10.pt",
+    "ensemble_root_path": "./ensemble",
     "dataset_path": {
         "train": "./dataset/reversalData_minor-train.csv",
         "validation": "./dataset/reversalData_minor-val.csv",
@@ -9,7 +11,7 @@
     "num_single_sample_timesteps": 1000,
     "input_window_length": 100,
     "label_window_length": 50,
-    "window_stride": 10,
+    "window_stride": 150,
     "input_features": [
         "psi_e",
         "b_e",
@@ -33,6 +35,6 @@
     "position_wise_nn_dim": 64,
     "dropout": 0.5,
     "batch_size": 128,
-    "epochs": 20,
+    "epochs": 2,
     "learning_rate": 0.0005
 }

@@ -1,6 +1,7 @@
 thesis/
 models/
 dataset/
+ensemble/
 
 .backupignore
 backup.log

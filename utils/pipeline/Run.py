@@ -96,7 +96,7 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, data
 
     print()
 
-    return avg_loss, avg_r2
+    return avg_loss, avg_r2, feature_r2s, timestep_r2s
 
 
 def autoregress(model, batch_x, batch_y, device, extract_attention = False):
@@ -224,5 +224,5 @@ def validate(model, criterion, r2, per_timestep_r2, per_feature_r2, data_loader,
 
     print("\n-----------------------------------------------------------------\n")
 
-    return avg_loss, avg_r2
+    return avg_loss, avg_r2, feature_r2s, timestep_r2s
 
