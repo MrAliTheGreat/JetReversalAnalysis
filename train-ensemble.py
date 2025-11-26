@@ -10,6 +10,7 @@ with open("./params.json", mode = "r", encoding = "utf-8") as f:
     dataset_path_train = data["dataset_path"]["train"]
     dataset_path_val = data["dataset_path"]["validation"]
     dataset_path_test = data["dataset_path"]["test"]
+    stats_path = data["stats_path"]
     num_single_sample_timesteps = data["num_single_sample_timesteps"]
     window_stride = data["window_stride"]
     input_window_length = data["input_window_length"]
@@ -39,7 +40,7 @@ from torchmetrics.regression import R2Score, PearsonCorrCoef
 from datetime import datetime
 import os
 
-from utils.pipeline.Data import get_mean_std_respected_temporal, WindowedIterableDataset
+from utils.pipeline.Data import read_stats, WindowedIterableDataset
 from utils.pipeline.Model import TimeSeriesHuggingFaceTransformer
 from utils.pipeline.Run import train, validate
 from utils.pipeline.Monitor import Overfit
@@ -80,25 +81,7 @@ with open(f"./ensemble/logs/{num_log}.log", mode = "a") as f:
     f.write(datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + "\n")
     f.write(setup)
 
-input_stats = get_mean_std_respected_temporal(
-    dataset_path = dataset_path_train,
-    cols = input_features,
-    num_single_sample_timesteps = num_single_sample_timesteps,
-    input_window_len = input_window_length,
-    label_window_len = label_window_length,
-    window_stride = window_stride
-)
-if(set(input_features) == set(label_features)):
-    output_stats = input_stats
-else:
-    output_stats = get_mean_std_respected_temporal(
-        dataset_path = dataset_path_train,
-        cols = label_features,
-        num_single_sample_timesteps = num_single_sample_timesteps,
-        input_window_len = input_window_length,
-        label_window_len = label_window_length,
-        window_stride = window_stride
-    )
+stats = read_stats(path = stats_path)
 
 tic = datetime.now()
 for seed_val in seed_vals:
@@ -108,8 +91,8 @@ for seed_val in seed_vals:
 
     df_train = WindowedIterableDataset(
         dataset_path = dataset_path_train,
-        input_stats = input_stats,
-        label_stats = output_stats,
+        input_stats = stats,
+        label_stats = stats,
         input_features = input_features,
         label_features = label_features,
         extra_features = extra_features,
@@ -126,8 +109,8 @@ for seed_val in seed_vals:
 
     df_val = WindowedIterableDataset(
         dataset_path = dataset_path_val,
-        input_stats = input_stats,
-        label_stats = output_stats,
+        input_stats = stats,
+        label_stats = stats,
         input_features = input_features,
         label_features = label_features,
         extra_features = extra_features,

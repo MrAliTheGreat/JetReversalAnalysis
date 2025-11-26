@@ -112,5 +112,5 @@ class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
                 Shape: (output_window_num_timesteps, input_window_num_timesteps)
         '''
 
-        return torch.stack(self.attention_weights[attention_type], dim = 0).squeeze_(dim = 2).squeeze_(dim = 3).mean(dim = 1).mean(dim = 1).cpu().numpy()
+        return torch.stack(self.attention_weights[attention_type], dim = 0).squeeze_(dim = 2).squeeze_(dim = 3).mean(dim = 1).mean(dim = 1).cpu()
     

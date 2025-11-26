@@ -117,7 +117,8 @@ def get_mean_std_respected_temporal(dataset_path, cols, num_single_sample_timest
         agg_exprs.append(pl.col(col).std().alias(f"{col}_std"))
 
     for window_end_idx in range(input_window_len, num_single_sample_timesteps - label_window_len + 1, window_stride):
-        windowed_df = df.filter(pl.col("timestep_idx") < window_end_idx)
+        # Added the & part for only considering the input window for stats not all the previous observations
+        windowed_df = df.filter((pl.col("timestep_idx") < window_end_idx) & (pl.col("timestep_idx") >= window_end_idx - input_window_len))
 
         windowed_df = windowed_df.select(agg_exprs).with_columns(
             pl.lit(window_end_idx).alias("window_end_idx")
@@ -126,6 +127,9 @@ def get_mean_std_respected_temporal(dataset_path, cols, num_single_sample_timest
         res.append(windowed_df.collect(engine = "streaming"))
 
     return pl.concat(res)
+
+def read_stats(path):
+    return pl.read_csv(path)
 
 
 #################### CLASSES ####################
@@ -138,6 +142,7 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
             label_stats,
             input_features,
             label_features,
+            extra_features,
             num_single_sample_timesteps,
             stride,
             input_window_length,
@@ -162,11 +167,12 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
         self.dataset_path = dataset_path
         self.input_features = input_features
         self.label_features = label_features
+        self.extra_features = extra_features    # Dominant Eigenvalues
         self.num_single_sample_timesteps = num_single_sample_timesteps
         self.stride = stride
         self.input_window_length = input_window_length
         self.label_window_length = label_window_length
-        self.valid_length = self.input_window_length + self.label_window_length
+        self.valid_length = input_window_length + label_window_length
         self.chunk_size = chunk_size
         self.inference = inference
 
@@ -207,11 +213,11 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
             if("eta_list" in data_chunk.columns):
                 data_chunk = (
                     data_chunk
-                    .drop(["id", "eps", "n_0_squared"])    # No eps or n_0_squared!
+                    .drop(["id"])    # No eps or n_0_squared!
                     .with_columns([
                         pl.col(feature)
                         .str.json_decode(dtype = pl.List(pl.Float32))
-                        for feature in self.input_features if feature != "eta_list"
+                        for feature in (self.input_features + self.extra_features) if feature != "eta_list"
                     ])
                     .with_columns([
                         pl.col("eta_list")
@@ -228,28 +234,46 @@ class WindowedIterableDataset(torch.utils.data.IterableDataset):
                     ])
                 )
 
-            input_df = data_chunk.select(self.input_features).explode("*").to_numpy().reshape(data_chunk.shape[0], self.num_single_sample_timesteps, len(self.input_features))
-            label_df = data_chunk.select(self.label_features).explode("*").to_numpy().reshape(data_chunk.shape[0], self.num_single_sample_timesteps, len(self.label_features))
+            input_df = data_chunk.select(
+                self.input_features
+            ).explode("*").to_numpy().reshape(
+                data_chunk.shape[0], self.num_single_sample_timesteps, len(self.input_features)
+            )
+            label_df = data_chunk.select(
+                self.label_features
+            ).explode("*").to_numpy().reshape(
+                data_chunk.shape[0], self.num_single_sample_timesteps, len(self.label_features)
+            )
+            extra_df = data_chunk.select(
+                self.extra_features
+            ).explode("*").to_numpy().reshape(
+                data_chunk.shape[0], self.num_single_sample_timesteps, len(self.extra_features)
+            )
 
             # Permutation substitutes shuffle=True in Dataloader!
-            for time_series_idx in np.random.permutation(data_chunk.shape[0]):
-                # If using get_mean_std no enumerate 
-                for i, input_window_start_idx in enumerate(range(0, self.num_single_sample_timesteps - self.valid_length + 1, self.stride)):
+            time_series_indices = range(data_chunk.shape[0]) if(self.inference) else np.random.permutation(data_chunk.shape[0])
+            for time_series_idx in time_series_indices:
+                # If using get_mean_std no enumerate but you need enumerate if you having rolling normalization
+                for input_window_start_idx in range(0, self.num_single_sample_timesteps - self.valid_length + 1, self.stride):
                     label_window_start_idx = input_window_start_idx + self.input_window_length
-                    
+
                     input_window = input_df[time_series_idx, input_window_start_idx: label_window_start_idx, :]
                     label_window = label_df[time_series_idx, label_window_start_idx: label_window_start_idx + self.label_window_length, :]
                     label_full = label_df[time_series_idx, :, :]
+                    extra_full = extra_df[time_series_idx, :, :]
                     
-                    input_window = (input_window - self.input_means[i, :]) / self.input_stds[i, :]
-                    label_window = (label_window - self.label_means[i, :]) / self.label_stds[i, :]
-                    # label_full = (label_full - self.means) / self.stds
+                    # input_window = (input_window - self.input_means[i, :]) / self.input_stds[i, :]
+                    # label_window = (label_window - self.label_means[i, :]) / self.label_stds[i, :]
+
+                    input_window = (input_window - self.input_means) / self.input_stds
+                    label_window = (label_window - self.label_means) / self.label_stds
     
                     input_window = torch.tensor(input_window, dtype = torch.float)
                     label_window = torch.tensor(label_window, dtype = torch.float)
                     label_full = torch.tensor(label_full, dtype = torch.float)
+                    extra_full = torch.tensor(extra_full, dtype = torch.float)
 
                     if(self.inference):
-                        yield input_window, label_window, label_full
+                        yield input_window, label_window, label_full, extra_full
                     else:
                         yield input_window, label_window

@@ -4,7 +4,7 @@ import numpy as np
 
 
 
-def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, data_loader, device, epoch, total_epochs):
+def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_feature_pearson, data_loader, device, epoch, total_epochs):
     '''
         Train for a single epoch
     '''
@@ -58,6 +58,10 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, data
             outputs.logits.reshape(outputs.logits.shape[0], -1),
             batch_y.reshape(batch_y.shape[0], -1)
         )
+        per_feature_pearson.update(
+            outputs.logits.reshape(-1, num_label_features),
+            batch_y.reshape(-1, num_label_features)            
+        )
         progress_bar.set_postfix({"train_loss": f"{loss.item():.6f}"})
         for t in range(num_label_timesteps):
             per_timestep_r2[t].update(
@@ -71,7 +75,9 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, data
 
     avg_loss = train_loss / num_batches
     avg_r2 = r2.compute().item()
+    feature_pearsons = per_feature_pearson.compute().cpu().numpy()
     r2.reset()
+    per_feature_pearson.reset()
 
     timestep_r2s = np.array([_r2.compute().item() for _r2 in per_timestep_r2])
     for _r2 in per_timestep_r2:
@@ -82,6 +88,9 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, data
 
     print(f"Epoch [{epoch + 1}/{total_epochs}], Train Loss: {avg_loss:.6f}, Train R2: {avg_r2:.6f}")
 
+    print("\nPer Feature Pearson:")
+    print(f"    {[f'{f_p:.6f}' for f_p in feature_pearsons]}")
+
     sorted_idxs = np.argsort(timestep_r2s)
     print("\nWorst 5 Time-Steps Train R2:")
     for idx in sorted_idxs[:5]:
@@ -91,12 +100,12 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, data
     for idx in sorted_idxs[-5:][::-1]:
         print(f"    Time-step {idx + 1}: R2 = {timestep_r2s[idx]:.6f}")
 
-    print("\n Per Feature R2:")
+    print("\nPer Feature R2:")
     print(f"    {[f'{f_r2:.6f}' for f_r2 in feature_r2s]}")
 
     print()
 
-    return avg_loss, avg_r2, feature_r2s, timestep_r2s
+    return avg_loss, avg_r2, feature_r2s, timestep_r2s, feature_pearsons
 
 
 def autoregress(model, batch_x, batch_y, device, extract_attention = False):
@@ -152,7 +161,7 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
     return preds
 
 
-def validate(model, criterion, r2, per_timestep_r2, per_feature_r2, data_loader, device, epoch, total_epochs):
+def validate(model, criterion, r2, per_timestep_r2, per_feature_r2, per_feature_pearson, data_loader, device, epoch, total_epochs):
     '''
         Validate for a single epoch
     '''
@@ -186,6 +195,10 @@ def validate(model, criterion, r2, per_timestep_r2, per_feature_r2, data_loader,
                 preds.reshape(preds.shape[0], -1),
                 batch_y.reshape(batch_y.shape[0], -1)
             )
+            per_feature_pearson.update(
+                preds.reshape(-1, num_label_features),
+                batch_y.reshape(-1, num_label_features)
+            )
             progress_bar.set_postfix({"val_loss": f"{loss.item():.6f}"})
             for t in range(num_label_timesteps):
                 per_timestep_r2[t].update(
@@ -199,7 +212,9 @@ def validate(model, criterion, r2, per_timestep_r2, per_feature_r2, data_loader,
 
     avg_loss = val_loss / num_batches
     avg_r2 = r2.compute().item()
+    feature_pearsons = per_feature_pearson.compute().cpu().numpy()
     r2.reset()
+    per_feature_pearson.reset()
 
     timestep_r2s = np.array([_r2.compute().item() for _r2 in per_timestep_r2])
     for _r2 in per_timestep_r2:
@@ -210,6 +225,9 @@ def validate(model, criterion, r2, per_timestep_r2, per_feature_r2, data_loader,
 
     print(f"Epoch [{epoch + 1}/{total_epochs}], Val Loss: {avg_loss:.6f}, Val R2: {avg_r2:.6f}")
 
+    print("\nPer Feature Pearson:")
+    print(f"    {[f'{f_p:.6f}' for f_p in feature_pearsons]}")
+
     sorted_idxs = np.argsort(timestep_r2s)
     print("\nWorst 5 Time-Steps Val R2:")
     for idx in sorted_idxs[:5]:
@@ -219,10 +237,10 @@ def validate(model, criterion, r2, per_timestep_r2, per_feature_r2, data_loader,
     for idx in sorted_idxs[-5:][::-1]:
         print(f"    Time-step {idx + 1}: R2 = {timestep_r2s[idx]:.6f}")
 
-    print("\n Per Feature R2:")
+    print("\nPer Feature R2:")
     print(f"    {[f'{f_r2:.6f}' for f_r2 in feature_r2s]}")
 
     print("\n-----------------------------------------------------------------\n")
 
-    return avg_loss, avg_r2, feature_r2s, timestep_r2s
+    return avg_loss, avg_r2, feature_r2s, timestep_r2s, feature_pearsons
 

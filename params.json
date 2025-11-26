@@ -1,17 +1,19 @@
 {
-    "seed_val": 30,
+    "seed_val": 7,
     "seed_vals": [0, 5, 10, 15, 20, 25, 30, 35, 40, 45],
-    "model_path": "./models/transformer-100-50-10.pt",
+    "model_path": "./models/transformer-150-50-10.pt",
     "ensemble_root_path": "./ensemble",
     "dataset_path": {
-        "train": "./dataset/reversalData_minor-train.csv",
-        "validation": "./dataset/reversalData_minor-val.csv",
-        "test": "./dataset/reversalData_minor-test.csv"
+        "train": "/mnt/abahari/stream_dataset-train.csv",
+        "validation": "/mnt/abahari/stream_dataset-val.csv",
+        "test": "/mnt/abahari/stream_dataset-test.csv",
+        "stats": "/mnt/abahari/stream_dataset-stats.csv"
     },
-    "num_single_sample_timesteps": 1000,
+    "stats_path": "/mnt/abahari/stats.csv",
+    "num_single_sample_timesteps": 100000,
     "input_window_length": 100,
     "label_window_length": 50,
-    "window_stride": 150,
+    "window_stride": 35,
     "input_features": [
         "psi_e",
         "b_e",
@@ -27,6 +29,9 @@
         "b_plus",
         "u_list"
     ],
+    "extra_features": [
+        "dom_eigenvals"
+    ],
     "relative_attention_num_buckets": 64,
     "embedding_dim": 128,
     "num_attention_head": 8,
@@ -35,6 +40,6 @@
     "position_wise_nn_dim": 64,
     "dropout": 0.5,
     "batch_size": 128,
-    "epochs": 2,
+    "epochs": 10,
     "learning_rate": 0.0005
 }

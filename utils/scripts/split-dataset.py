@@ -6,10 +6,11 @@ import json
 with open("~/Documents/Thesis/src/params.json", mode = "r", encoding = "utf-8") as f:
     data = json.load(f)
     seed_val = data["seed_val"]
-    dataset_path = "~/Documents/Thesis/src/dataset/reversalData_minor.csv"
-    train_ratio = 0.7
-    val_ratio = 0.2
-    test_ratio = 0.1
+    dataset_path = "/mnt/abahari/stream_dataset.csv"
+    train_ratio = 0.2
+    val_ratio = 0.03
+    test_ratio = 0.02
+    stats_ratio = 0.75
 
 np.random.seed(seed_val)
 
@@ -19,7 +20,7 @@ def get_num_data_points(dataset_path):
     return pl.scan_csv(dataset_path).select(pl.len()).collect().item()
 
 def split_dataset(dataset_path, train_ratio, val_ratio, test_ratio):
-    if(not np.isclose(train_ratio + val_ratio + test_ratio, 1.0)):
+    if(not np.isclose(train_ratio + val_ratio + test_ratio + stats_ratio, 1.0)):
         print("Ratios do not sum up to 1!")
         return
 
@@ -38,7 +39,10 @@ def split_dataset(dataset_path, train_ratio, val_ratio, test_ratio):
         (pl.col("rand_id") >= train_ratio) & (pl.col("rand_id") < train_ratio + val_ratio)
     ).drop("rand_id")
     df_test = df.filter(
-        pl.col("rand_id") >= train_ratio + val_ratio
+        (pl.col("rand_id") >= train_ratio + val_ratio) & (pl.col("rand_id") < train_ratio + val_ratio + test_ratio)
+    ).drop("rand_id")
+    df_stats = df.filter(
+        pl.col("rand_id") >= train_ratio + val_ratio + test_ratio
     ).drop("rand_id")
 
     df_train.sink_csv(f"{dataset_path[:-4]}-train.csv")
@@ -47,16 +51,19 @@ def split_dataset(dataset_path, train_ratio, val_ratio, test_ratio):
     print("Validation Dataset Saved!")
     df_test.sink_csv(f"{dataset_path[:-4]}-test.csv")
     print("Test Dataset Saved!")
+    df_stats.sink_csv(f"{dataset_path[:-4]}-stats.csv")
+    print("Stats Dataset Saved!")
 
 
-# split_dataset(
-#     dataset_path,
-#     train_ratio,
-#     val_ratio,
-#     test_ratio
-# )
+split_dataset(
+    dataset_path,
+    train_ratio,
+    val_ratio,
+    test_ratio
+)
 
-# print(f"Number of train data points: {get_num_data_points(dataset_path)}")
-# print(f"Number of train data points: {get_num_data_points(f'{dataset_path[:-4]}-train.csv')}")
-# print(f"Number of validation data points: {get_num_data_points(f'{dataset_path[:-4]}-val.csv')}")
-# print(f"Number of test data points: {get_num_data_points(f'{dataset_path[:-4]}-test.csv')}")
+print(f"Number of total data points: {get_num_data_points(dataset_path)}")
+print(f"Number of train data points: {get_num_data_points(f'{dataset_path[:-4]}-train.csv')}")
+print(f"Number of validation data points: {get_num_data_points(f'{dataset_path[:-4]}-val.csv')}")
+print(f"Number of test data points: {get_num_data_points(f'{dataset_path[:-4]}-test.csv')}")
+print(f"Number of stats data points: {get_num_data_points(f'{dataset_path[:-4]}-stats.csv')}")

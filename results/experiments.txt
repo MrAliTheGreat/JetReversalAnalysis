@@ -839,3 +839,33 @@ learning_rate: 0.0005
 psi_e, b_e, psi_plus, b_plus, u_list, eta_list -> psi_e, b_e, psi_plus, b_plus, u_list
 
 ==========================================
+2025-11-03-12:56:34.630521
+./models/transformer-200-100-10.pt
+
+Training Loss: 0.023708339842657248, Training R2: 0.9825142621994019
+Validation Loss: 1.0310416351789715, Validation R2: 0.3219274580478668
+
+Per feature Pearson added as a train/val performance metric!
+dataset: random
+bos_projector: non-linear (1 LeakyReLU)
+bos_input: encoder hidden state of last input time-step
+positional encoding: sin, cos
+Loss: MSE
+seed_val: 7
+num_single_sample_timesteps: 1000
+input_window_len: 200
+label_window_len: 100
+window_stride: 20
+relative_attention_num_buckets: 64
+embedding_dim: 128
+num_attention_head: 8
+num_encoder_layers: 5
+num_decoder_layers: 5
+position_wise_nn_dim: 64
+dropout: 0.5
+batch_size: 128
+epochs: 20
+learning_rate: 0.0005
+psi_e, b_e, psi_plus, b_plus, u_list, eta_list -> psi_e, b_e, psi_plus, b_plus, u_list
+
+==========================================
