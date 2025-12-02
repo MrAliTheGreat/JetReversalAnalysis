@@ -9,7 +9,6 @@ with open("./params.json", mode = "r", encoding = "utf-8") as f:
     ensemble_root_path = data["ensemble_root_path"]
     dataset_path_train = data["dataset_path"]["train"]
     dataset_path_val = data["dataset_path"]["validation"]
-    dataset_path_test = data["dataset_path"]["test"]
     stats_path = data["stats_path"]
     num_single_sample_timesteps = data["num_single_sample_timesteps"]
     window_stride = data["window_stride"]
@@ -40,7 +39,7 @@ from torchmetrics.regression import R2Score, PearsonCorrCoef
 from datetime import datetime
 import os
 
-from utils.pipeline.Data import read_stats, WindowedIterableDataset
+from utils.pipeline.Data import WindowedDataset
 from utils.pipeline.Model import TimeSeriesHuggingFaceTransformer
 from utils.pipeline.Run import train, validate
 from utils.pipeline.Monitor import Overfit
@@ -81,48 +80,32 @@ with open(f"./ensemble/logs/{num_log}.log", mode = "a") as f:
     f.write(datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + "\n")
     f.write(setup)
 
-stats = read_stats(path = stats_path)
-
 tic = datetime.now()
 for seed_val in seed_vals:
     torch.manual_seed(seed_val)
     random.seed(seed_val)
     np.random.seed(seed_val)
 
-    df_train = WindowedIterableDataset(
-        dataset_path = dataset_path_train,
-        input_stats = stats,
-        label_stats = stats,
-        input_features = input_features,
-        label_features = label_features,
-        extra_features = extra_features,
-        num_single_sample_timesteps = num_single_sample_timesteps,
-        stride = window_stride,
-        input_window_length = input_window_length,
-        label_window_length = label_window_length
-    )
+    df_train = WindowedDataset(dataset_path = dataset_path_train)
     data_loader_train = DataLoader(
         df_train,
         batch_size = batch_size,
-        pin_memory = True
+        shuffle = True,
+        num_workers = 8,
+        prefetch_factor = 4,
+        pin_memory = True,
+        persistent_workers = True
     )
 
-    df_val = WindowedIterableDataset(
-        dataset_path = dataset_path_val,
-        input_stats = stats,
-        label_stats = stats,
-        input_features = input_features,
-        label_features = label_features,
-        extra_features = extra_features,
-        num_single_sample_timesteps = num_single_sample_timesteps,
-        stride = window_stride,
-        input_window_length = input_window_length,
-        label_window_length = label_window_length
-    )
+    df_val = WindowedDataset(dataset_path = dataset_path_val)
     data_loader_val = DataLoader(
         df_val,
         batch_size = batch_size,
-        pin_memory = True
+        shuffle = True,
+        num_workers = 8,
+        prefetch_factor = 4,
+        pin_memory = True,
+        persistent_workers = True
     )
 
     model = TimeSeriesHuggingFaceTransformer(
@@ -138,6 +121,8 @@ for seed_val in seed_vals:
         relative_attention_num_buckets = relative_attention_num_buckets,
         dropout = dropout
     ).to(device)
+
+    model = torch.compile(model)
 
     # overfit_monitor = Overfit()
     # overfit_count = 0
@@ -214,22 +199,6 @@ for seed_val in seed_vals:
         f.write(f"    {[f'{f_p:.6f}' for f_p in train_feature_pearsons]}\n")
         f.write("Val Per Feature Pearson:\n")
         f.write(f"    {[f'{f_p:.6f}' for f_p in val_feature_pearsons]}\n")
-
-        # sorted_idxs = np.argsort(train_ts_r2s)
-        # f.write("\nTrain worst 10 Time-Steps R2:\n")
-        # for idx in sorted_idxs[:10]:
-        #     f.write(f"    {idx + 1}: {train_ts_r2s[idx]:.6f}\n")
-        # f.write("Train best 10 Time-Steps R2:\n")
-        # for idx in sorted_idxs[-10:][::-1]:
-        #     f.write(f"    {idx + 1}: {train_ts_r2s[idx]:.6f}\n")
-
-        # sorted_idxs = np.argsort(val_ts_r2s)
-        # f.write("Val worst 10 Time-Steps R2:\n")
-        # for idx in sorted_idxs[:10]:
-        #     f.write(f"    {idx + 1}: {val_ts_r2s[idx]:.6f}\n")
-        # f.write("Val best 10 Time-Steps R2:\n")
-        # for idx in sorted_idxs[-10:][::-1]:
-        #     f.write(f"    {idx + 1}: {val_ts_r2s[idx]:.6f}\n")
 
         f.write("\n==========================================\n")
 

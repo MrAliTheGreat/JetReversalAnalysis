@@ -4,8 +4,8 @@
     "model_path": "./models/transformer-150-50-10.pt",
     "ensemble_root_path": "./ensemble",
     "dataset_path": {
-        "train": "/mnt/abahari/stream_dataset-train.csv",
-        "validation": "/mnt/abahari/stream_dataset-val.csv",
+        "train": "/mnt/abahari/dataset-train.zarr",
+        "validation": "/mnt/abahari/dataset-val.zarr",
         "test": "/mnt/abahari/stream_dataset-test.csv",
         "stats": "/mnt/abahari/stream_dataset-stats.csv"
     },
@@ -39,7 +39,7 @@
     "num_decoder_layers": 5,
     "position_wise_nn_dim": 64,
     "dropout": 0.5,
-    "batch_size": 128,
+    "batch_size": 256,
     "epochs": 10,
-    "learning_rate": 0.0005
+    "learning_rate": 0.001
 }
