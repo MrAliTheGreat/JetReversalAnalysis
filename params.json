@@ -1,19 +1,27 @@
 {
     "seed_val": 7,
-    "seed_vals": [0, 5, 10, 15, 20, 25, 30, 35, 40, 45],
+    "seed_vals": [0, 5, 10, 15, 20, 25, 30, 35, 40],
     "model_path": "./models/transformer-150-50-10.pt",
     "ensemble_root_path": "./ensemble",
     "dataset_path": {
         "train": "/mnt/abahari/dataset-train.zarr",
         "validation": "/mnt/abahari/dataset-val.zarr",
-        "test": "/mnt/abahari/stream_dataset-test.csv",
+        "test_windowed": "/mnt/abahari/dataset-test-windowed.zarr",
+        "test_full": "/mnt/abahari/dataset-test-full.zarr",
         "stats": "/mnt/abahari/stream_dataset-stats.csv"
     },
-    "stats_path": "/mnt/abahari/stats.csv",
-    "num_single_sample_timesteps": 100000,
+    "finetune_reversals_dataset_path": {
+        "train": "/mnt/abahari/dataset-reversals-train.zarr",
+        "validation": "/mnt/abahari/dataset-reversals-val.zarr",
+        "test_windowed": "/mnt/abahari/dataset-reversals-test-windowed.zarr",
+        "test_full": "/mnt/abahari/dataset-reversals-test-full.zarr",
+        "stats": "/mnt/abahari/reversals_dataset_20000-stats.csv"        
+    },
+    "stats_path": "/mnt/abahari/stats-reversals.csv",
+    "num_single_sample_timesteps": 1000,
     "input_window_length": 100,
     "label_window_length": 50,
-    "window_stride": 35,
+    "window_stride": 10,
     "input_features": [
         "psi_e",
         "b_e",
@@ -40,6 +48,6 @@
     "position_wise_nn_dim": 64,
     "dropout": 0.5,
     "batch_size": 256,
-    "epochs": 10,
+    "epochs": 8,
     "learning_rate": 0.001
 }

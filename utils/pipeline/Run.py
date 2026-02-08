@@ -4,6 +4,30 @@ import numpy as np
 
 
 
+def forward_pass(model, batch_x, batch_y, device):
+    encoder_pe = model.input_pe.unsqueeze(0).to(device)
+
+    encoder_outputs = model.encoder(
+        inputs_embeds = model.encoder.embed_tokens(batch_x) + encoder_pe,
+        return_dict = True
+    )
+
+    final_timestep_encoder_state = encoder_outputs.last_hidden_state[:, -1:, :]
+    bos = model.bos_projector(final_timestep_encoder_state)
+
+    decoder_input = torch.cat([bos, batch_y[:, :-1, :]], dim = 1)    # Shift right with one bos
+
+    decoder_pe = model.output_pe.unsqueeze(0).to(device)
+
+    outputs = model(
+        encoder_outputs = encoder_outputs,
+        decoder_inputs_embeds = model.decoder.embed_tokens(decoder_input) + decoder_pe,
+        output_attentions = False
+    )
+
+    return outputs
+
+
 def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_feature_pearson, data_loader, device, epoch, total_epochs):
     '''
         Train for a single epoch
@@ -11,6 +35,10 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
     
     model.train()
     train_loss = 0.0
+    train_loss_normal = 0.0
+    train_loss_u = 0.0
+    train_loss_plus = 0.0
+    train_loss_e = 0.0
     num_batches = 0
     
     progress_bar = tqdm(
@@ -19,8 +47,35 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
     )
 
     for batch_x, batch_y in progress_bar:
+        # -psi_e, -b_e, -psi_plus, -b_plus, u, -eta
+        batch_x_u = batch_x.clone()
+        batch_x_u[:, :, :4] *= -1
+        batch_x_u[:, :, 5] *= -1
+        batch_y_u = batch_y.clone()
+        batch_y_u[:, :, :4] *= -1
+
+        # -psi_e, -b_e, psi_plus, b_plus, -u, -eta
+        batch_x_plus = batch_x.clone()
+        batch_x_plus[:, :, :2] *= -1
+        batch_x_plus[:, :, 4:] *= -1
+        batch_y_plus = batch_y.clone()
+        batch_y_plus[:, :, :2] *= -1
+        batch_y_plus[:, :, 4] *= -1
+
+        # psi_e, b_e, -psi_plus, -b_plus, -u, eta
+        batch_x_e = batch_x.clone()
+        batch_x_e[:, :, 2:5] *= -1
+        batch_y_e = batch_y.clone()
+        batch_y_e[:, :, 2:] *= -1
+
         batch_x = batch_x.to(device)
         batch_y = batch_y.to(device)
+        batch_x_u = batch_x_u.to(device)
+        batch_y_u = batch_y_u.to(device)
+        batch_x_plus = batch_x_plus.to(device)
+        batch_y_plus = batch_y_plus.to(device)
+        batch_x_e = batch_x_e.to(device)
+        batch_y_e = batch_y_e.to(device)
 
         # num_input_batch_samples, num_input_timesteps, _ = batch_x.shape
         # num_label_batch_samples, num_label_timesteps, _ = batch_y.shape
@@ -28,29 +83,25 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
 
         optimizer.zero_grad()
 
-        encoder_pe = model.input_pe.unsqueeze(0).to(device)
+        outputs = forward_pass(model = model, batch_x = batch_x, batch_y = batch_y, device = device)
+        outputs_u = forward_pass(model = model, batch_x = batch_x_u, batch_y = batch_y_u, device = device)
+        outputs_plus = forward_pass(model = model, batch_x = batch_x_plus, batch_y = batch_y_plus, device = device)
+        outputs_e = forward_pass(model = model, batch_x = batch_x_e, batch_y = batch_y_e, device = device)
 
-        encoder_outputs = model.encoder(
-            inputs_embeds = model.encoder.embed_tokens(batch_x) + encoder_pe,
-            return_dict = True
-        )
+        loss_normal = criterion(outputs.logits, batch_y)    # logits are predictions
+        loss_u = criterion(outputs.logits[:, :, -1], outputs_u.logits[:, :, -1])
+        loss_plus = criterion(outputs.logits[:, :, 2:4], outputs_plus.logits[:, :, 2:4])
+        loss_e = criterion(outputs.logits[:, :, :2], outputs_e.logits[:, :, :2])
 
-        final_timestep_encoder_state = encoder_outputs.last_hidden_state[:, -1:, :]
-        bos = model.bos_projector(final_timestep_encoder_state)
+        loss = 1.0 * loss_normal + 0.1 * loss_u + 0.1 * loss_plus + 0.1 * loss_e
 
-        decoder_input = torch.cat([bos, batch_y[:, :-1, :]], dim = 1)    # Shift right with one bos
-
-        decoder_pe = model.output_pe.unsqueeze(0).to(device)
-
-        outputs = model(
-            encoder_outputs = encoder_outputs,
-            decoder_inputs_embeds = model.decoder.embed_tokens(decoder_input) + decoder_pe,
-            output_attentions = False
-        )
-
-        loss = criterion(outputs.logits, batch_y)    # logits are predictions
         loss.backward()
         optimizer.step()
+
+        train_loss_normal += loss_normal.item()
+        train_loss_u += loss_u.item()
+        train_loss_plus += loss_plus.item()
+        train_loss_e += loss_e.item()
 
         train_loss += loss.item()
         num_batches += 1
@@ -73,6 +124,11 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
             batch_y.reshape(-1, num_label_features)
         )
 
+    avg_loss_normal = train_loss_normal / num_batches
+    avg_loss_u = train_loss_u / num_batches
+    avg_loss_plus = train_loss_plus / num_batches
+    avg_loss_e = train_loss_e / num_batches
+
     avg_loss = train_loss / num_batches
     avg_r2 = r2.compute().item()
     feature_pearsons = per_feature_pearson.compute().cpu().numpy()
@@ -87,6 +143,7 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
     per_feature_r2.reset()
 
     print(f"Epoch [{epoch + 1}/{total_epochs}], Train Loss: {avg_loss:.6f}, Train R2: {avg_r2:.6f}")
+    print(f"    Train Normal Loss: {avg_loss_normal:.6f}, Same U Loss: {avg_loss_u:.6f}, Same Plus Loss: {avg_loss_plus:.6f}, Same E Loss: {avg_loss_e:.6f}")
 
     print("\nPer Feature Pearson:")
     print(f"    {[f'{f_p:.6f}' for f_p in feature_pearsons]}")

@@ -67,7 +67,7 @@ label_means = pl2numpy(stats, label_features, "mean")
 label_stds = pl2numpy(stats, label_features, "std")
 label_stds[label_stds == 0] = 10 ** -8
 
-buffer_size = 16384; buffer_idx = 0
+buffer_size = 16384
 buffer_inputs = np.zeros((buffer_size, input_window_length, len(input_features)))
 buffer_labels = np.zeros((buffer_size, label_window_length, len(label_features)))
 df_reader = pl.read_csv_batched(args.input_dataset, batch_size = 50000)
@@ -114,6 +114,7 @@ while(True):
             data_chunk.shape[0], num_single_sample_timesteps, len(label_features)
         )
 
+        buffer_idx = 0
 
         for time_series_idx in range(data_chunk.shape[0]):
             for input_window_start_idx in range(0, num_single_sample_timesteps - valid_length + 1, window_stride):
@@ -136,7 +137,7 @@ while(True):
                     buffer_idx = 0
 
         if(buffer_idx < buffer_size):
-            inputs.append(buffer_inputs[0: buffer_idx, :, :])
-            labels.append(buffer_labels[0: buffer_idx, :, :])
+            inputs.append(buffer_inputs[:buffer_idx, :, :])
+            labels.append(buffer_labels[:buffer_idx, :, :])
 
 print(f"{args.output_zarr} created!")
