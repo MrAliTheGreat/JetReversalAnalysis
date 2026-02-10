@@ -40,16 +40,6 @@ class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
         
         self.lm_head = torch.nn.Linear(d_model, output_dim, bias = False)   # Last linear before output
 
-        # self.bos_token = torch.nn.Parameter(torch.empty(1, 1, output_dim))
-        # torch.nn.init.normal_(self.bos_token, mean = 0.0, std = 1.0)
-
-        # self.bos_projector = torch.nn.Linear(d_model, output_dim)
-        self.bos_projector = torch.nn.Sequential(
-            torch.nn.Linear(d_model, d_model),
-            torch.nn.LeakyReLU(),
-            torch.nn.Linear(d_model, output_dim)
-        )
-
         input_pos = torch.arange(input_window_len, dtype = torch.float32).unsqueeze(1)
         output_pos = torch.arange(output_window_len, dtype = torch.float32).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
@@ -63,12 +53,6 @@ class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
         output_pe[:, 0::2] = torch.sin(output_pos * div_term)
         output_pe[:, 1::2] = torch.cos(output_pos * div_term)
         self.register_buffer("output_pe", output_pe)
-
-        # self.encoder_pos_embedding = torch.nn.Embedding(input_window_len, d_model)
-        # self.encoder_pos_embedding.weight.data.copy_(input_pe)
-
-        # self.decoder_pos_embedding = torch.nn.Embedding(output_window_len, d_model)
-        # self.decoder_pos_embedding.weight.data.copy_(output_pe)
 
         self.attention_weights = {
             "encoder_attention": [],

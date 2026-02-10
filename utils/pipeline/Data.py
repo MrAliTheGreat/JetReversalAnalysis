@@ -1,5 +1,5 @@
 import torch
-import zarr
+import zarr, fsspec
 import numpy as np
 
 
@@ -7,7 +7,6 @@ import numpy as np
 class WindowedDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path):
         super().__init__()
-
         self.store = zarr.open(dataset_path, mode = "r")
         self.inputs = self.store["input"]
         self.labels = self.store["label"]

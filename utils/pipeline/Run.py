@@ -4,7 +4,7 @@ import numpy as np
 
 
 
-def forward_pass(model, batch_x, batch_y, device):
+def forward_pass(model, batch_x, device, extract_attention = False):
     encoder_pe = model.input_pe.unsqueeze(0).to(device)
 
     encoder_outputs = model.encoder(
@@ -12,17 +12,13 @@ def forward_pass(model, batch_x, batch_y, device):
         return_dict = True
     )
 
-    final_timestep_encoder_state = encoder_outputs.last_hidden_state[:, -1:, :]
-    bos = model.bos_projector(final_timestep_encoder_state)
-
-    decoder_input = torch.cat([bos, batch_y[:, :-1, :]], dim = 1)    # Shift right with one bos
-
-    decoder_pe = model.output_pe.unsqueeze(0).to(device)
+    decoder_pe = model.output_pe.unsqueeze(0).expand(batch_x.size(0), -1, -1).to(device)
 
     outputs = model(
         encoder_outputs = encoder_outputs,
-        decoder_inputs_embeds = model.decoder.embed_tokens(decoder_input) + decoder_pe,
-        output_attentions = False
+        decoder_inputs_embeds = decoder_pe,
+        output_attentions = extract_attention,
+        return_dict = True,
     )
 
     return outputs
@@ -51,31 +47,31 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
         batch_x_u = batch_x.clone()
         batch_x_u[:, :, :4] *= -1
         batch_x_u[:, :, 5] *= -1
-        batch_y_u = batch_y.clone()
-        batch_y_u[:, :, :4] *= -1
+        # batch_y_u = batch_y.clone()
+        # batch_y_u[:, :, :4] *= -1
 
         # -psi_e, -b_e, psi_plus, b_plus, -u, -eta
         batch_x_plus = batch_x.clone()
         batch_x_plus[:, :, :2] *= -1
         batch_x_plus[:, :, 4:] *= -1
-        batch_y_plus = batch_y.clone()
-        batch_y_plus[:, :, :2] *= -1
-        batch_y_plus[:, :, 4] *= -1
+        # batch_y_plus = batch_y.clone()
+        # batch_y_plus[:, :, :2] *= -1
+        # batch_y_plus[:, :, 4] *= -1
 
         # psi_e, b_e, -psi_plus, -b_plus, -u, eta
         batch_x_e = batch_x.clone()
         batch_x_e[:, :, 2:5] *= -1
-        batch_y_e = batch_y.clone()
-        batch_y_e[:, :, 2:] *= -1
+        # batch_y_e = batch_y.clone()
+        # batch_y_e[:, :, 2:] *= -1
 
         batch_x = batch_x.to(device)
         batch_y = batch_y.to(device)
         batch_x_u = batch_x_u.to(device)
-        batch_y_u = batch_y_u.to(device)
+        # batch_y_u = batch_y_u.to(device)
         batch_x_plus = batch_x_plus.to(device)
-        batch_y_plus = batch_y_plus.to(device)
+        # batch_y_plus = batch_y_plus.to(device)
         batch_x_e = batch_x_e.to(device)
-        batch_y_e = batch_y_e.to(device)
+        # batch_y_e = batch_y_e.to(device)
 
         # num_input_batch_samples, num_input_timesteps, _ = batch_x.shape
         # num_label_batch_samples, num_label_timesteps, _ = batch_y.shape
@@ -83,10 +79,10 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
 
         optimizer.zero_grad()
 
-        outputs = forward_pass(model = model, batch_x = batch_x, batch_y = batch_y, device = device)
-        outputs_u = forward_pass(model = model, batch_x = batch_x_u, batch_y = batch_y_u, device = device)
-        outputs_plus = forward_pass(model = model, batch_x = batch_x_plus, batch_y = batch_y_plus, device = device)
-        outputs_e = forward_pass(model = model, batch_x = batch_x_e, batch_y = batch_y_e, device = device)
+        outputs = forward_pass(model = model, batch_x = batch_x, device = device)
+        outputs_u = forward_pass(model = model, batch_x = batch_x_u, device = device)
+        outputs_plus = forward_pass(model = model, batch_x = batch_x_plus, device = device)
+        outputs_e = forward_pass(model = model, batch_x = batch_x_e, device = device)
 
         loss_normal = criterion(outputs.logits, batch_y)    # logits are predictions
         loss_u = criterion(outputs.logits[:, :, -1], outputs_u.logits[:, :, -1])
@@ -165,58 +161,57 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
     return avg_loss, avg_r2, feature_r2s, timestep_r2s, feature_pearsons
 
 
-def autoregress(model, batch_x, batch_y, device, extract_attention = False):
-    if(extract_attention):
-        model.attention_weights = {
-            "encoder_attention": [],
-            "decoder_attention": [],
-            "cross_attention": []
-        }
+# def autoregress(model, batch_x, batch_y, device, extract_attention = False):
+#     if(extract_attention):
+#         model.attention_weights = {
+#             "encoder_attention": [],
+#             "decoder_attention": [],
+#             "cross_attention": []
+#         }
 
-    # num_input_batch_samples, num_input_timesteps, _ = batch_x.shape
-    num_label_batch_samples, num_label_timesteps, num_label_features = batch_y.shape
+#     # num_input_batch_samples, num_input_timesteps, _ = batch_x.shape
+#     num_label_batch_samples, num_label_timesteps, num_label_features = batch_y.shape
 
-    encoder_pe = model.input_pe.unsqueeze(0).to(device)
+#     encoder_pe = model.input_pe.unsqueeze(0).to(device)
 
-    preds = torch.zeros(
-        num_label_batch_samples, num_label_timesteps, num_label_features,
-        dtype = torch.float,
-        device = device
-    )
+#     preds = torch.zeros(
+#         num_label_batch_samples, num_label_timesteps, num_label_features,
+#         dtype = torch.float,
+#         device = device
+#     )
 
-    encoder_outputs = model.encoder(
-        inputs_embeds = model.encoder.embed_tokens(batch_x) + encoder_pe,
-        return_dict = True
-    )
+#     encoder_outputs = model.encoder(
+#         inputs_embeds = model.encoder.embed_tokens(batch_x) + encoder_pe,
+#         return_dict = True
+#     )
 
-    final_encoder_state = encoder_outputs.last_hidden_state[:, -1:, :]
-    decoder_single_timestep_input = model.bos_projector(final_encoder_state)
+#     final_encoder_state = encoder_outputs.last_hidden_state[:, -1:, :]
+#     decoder_single_timestep_input = model.bos_projector(final_encoder_state)
 
-    decoder_pe = model.output_pe.unsqueeze(0).to(device)
+#     decoder_pe = model.output_pe.unsqueeze(0).to(device)
 
-    past_key_values = None
+#     past_key_values = None
 
-    for i in range(num_label_timesteps):
-        outputs = model(
-            encoder_outputs = encoder_outputs,
-            decoder_inputs_embeds = model.decoder.embed_tokens(decoder_single_timestep_input) + decoder_pe[:, i:i+1, :],
-            past_key_values = past_key_values,
-            use_cache = True,
-            output_attentions = extract_attention,
-            return_dict = True
-        )
+#     for i in range(num_label_timesteps):
+#         outputs = model(
+#             encoder_outputs = encoder_outputs,
+#             decoder_inputs_embeds = model.decoder.embed_tokens(decoder_single_timestep_input) + decoder_pe[:, i:i+1, :],
+#             past_key_values = past_key_values,
+#             use_cache = True,
+#             output_attentions = extract_attention,
+#             return_dict = True
+#         )
 
-        next_prediction = outputs.logits
+#         next_prediction = outputs.logits
 
-        preds[:, i, :] = next_prediction.squeeze(1)
+#         preds[:, i, :] = next_prediction.squeeze(1)
 
-        # KV Caching
-        past_key_values = outputs.past_key_values
+#         # KV Caching
+#         past_key_values = outputs.past_key_values
 
-        decoder_single_timestep_input = next_prediction
+#         decoder_single_timestep_input = next_prediction
 
-    return preds
-
+#     return preds
 
 def validate(
         model,
@@ -250,12 +245,12 @@ def validate(
 
             _, num_label_timesteps, num_label_features = batch_y.shape
 
-            preds = autoregress(
+            preds = forward_pass(
                 model = model,
                 batch_x = batch_x,
-                batch_y = batch_y,
                 device = device
             )
+            preds = preds.logits
 
             loss = criterion(preds, batch_y)
             val_loss += loss.item()

@@ -4,14 +4,14 @@
     "model_path": "./models/transformer-150-50-10.pt",
     "ensemble_root_path": "./ensemble",
     "dataset_path": {
-        "train": "/mnt/abahari/dataset-50_50-200000-train.zarr",
+        "train": "./dataset/dataset-50_50-200000-train.zarr",
         "stream": {
-            "validation": "/mnt/abahari/dataset-stream-10000-val.zarr",
-            "test": "/mnt/abahari/dataset-stream-10000-test.zarr"
+            "validation": "./dataset/dataset-stream-10000-val.zarr",
+            "test": "./dataset/dataset-stream-10000-test.zarr"
         },
         "reversal": {
-            "validation": "/mnt/abahari/dataset-reversal-10000-val.zarr",
-            "test": "/mnt/abahari/dataset-reversal-10000-test.zarr"
+            "validation": "./dataset/dataset-reversal-10000-val.zarr",
+            "test": "./dataset/dataset-reversal-10000-test.zarr"
         }
     },
     "stats_path": "/mnt/abahari/stats5050-reversals.csv",
