@@ -5,6 +5,8 @@ import zarr
 import numpy as np
 import argparse
 
+np.random.seed(0)
+
 
 # Use full path instead of ~
 with open("/users/labnet5/gr5/abahari/Documents/Thesis/src/params.json", mode = "r", encoding = "utf-8") as f:
@@ -21,6 +23,8 @@ with open("/users/labnet5/gr5/abahari/Documents/Thesis/src/params.json", mode = 
 parser = argparse.ArgumentParser(description = "Dataset Information")
 parser.add_argument("--input-dataset", required = True, help = "Input CSV Dataset")
 parser.add_argument("--output-zarr", required = True, help = "Output Zarr Dataset")
+parser.add_argument("--num-windows", required = True, help = "Number of total windows extracted from the time-series")
+parser.add_argument("--mode", required = True, help = "stream or reversal")
 args = parser.parse_args()
 
 
@@ -117,11 +121,20 @@ while(True):
         buffer_idx = 0
 
         for time_series_idx in range(data_chunk.shape[0]):
+            if(total_windows >= int(args.num_windows)):
+                break
             for input_window_start_idx in range(0, num_single_sample_timesteps - valid_length + 1, window_stride):
                 label_window_start_idx = input_window_start_idx + input_window_length
 
                 input_window = input_df[time_series_idx, input_window_start_idx: label_window_start_idx, :]
                 label_window = label_df[time_series_idx, label_window_start_idx: label_window_start_idx + label_window_length, :]
+
+                if((args.mode == "stream") and ((np.random.random() <= 0.5 or input_window_start_idx <= 1000))):
+                    # Add some randomness to sampling and bypass the intital start up in stream data
+                    continue
+
+                if((args.mode == "reversal") and not (num_single_sample_timesteps // 2 >= input_window_start_idx and num_single_sample_timesteps // 2 < input_window_start_idx + valid_length)):
+                    continue
 
                 input_window = (input_window - input_means) / input_stds
                 label_window = (label_window - label_means) / label_stds
@@ -135,6 +148,9 @@ while(True):
                     inputs.append(buffer_inputs)
                     labels.append(buffer_labels)
                     buffer_idx = 0
+
+                if(total_windows >= int(args.num_windows)):
+                    break
 
         if(buffer_idx < buffer_size):
             inputs.append(buffer_inputs[:buffer_idx, :, :])

@@ -6,7 +6,7 @@ with open("/users/labnet5/gr5/abahari/Documents/Thesis/src/params.json", mode = 
     data = json.load(f)
     stats_dataset_path = data["finetune_reversals_dataset_path"]["stats"]
     input_features = data["input_features"]
-    final_stats_path = "/mnt/abahari/stats-reversals.csv"
+    final_stats_path = "/mnt/abahari/stats5050-reversals.csv"
 
 
 def get_mean_std(dataset_path, cols):

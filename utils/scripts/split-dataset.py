@@ -7,10 +7,10 @@ with open("/users/labnet5/gr5/abahari/Documents/Thesis/src/params.json", mode = 
     data = json.load(f)
     seed_val = data["seed_val"]
     dataset_path = "/mnt/abahari/reversals_dataset_neg2pos_10000.csv"
-    train_ratio = 0.010        # 0.2 - reversals: 0.010
-    val_ratio = 0.003          # 0.03 - 0.003
-    test_ratio = 0.007         # 0.02 - 0.007
-    stats_ratio = 0.98
+    train_ratio = 0.3        # 0.2 - reversals: 0.010
+    val_ratio = 0.1          # 0.03 - 0.003
+    test_ratio = 0.1         # 0.02 - 0.007
+    stats_ratio = 0.5
 
 np.random.seed(seed_val)
 

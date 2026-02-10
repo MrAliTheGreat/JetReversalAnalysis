@@ -4,24 +4,21 @@
     "model_path": "./models/transformer-150-50-10.pt",
     "ensemble_root_path": "./ensemble",
     "dataset_path": {
-        "train": "/mnt/abahari/dataset-train.zarr",
-        "validation": "/mnt/abahari/dataset-val.zarr",
-        "test_windowed": "/mnt/abahari/dataset-test-windowed.zarr",
-        "test_full": "/mnt/abahari/dataset-test-full.zarr",
-        "stats": "/mnt/abahari/stream_dataset-stats.csv"
+        "train": "/mnt/abahari/dataset-50_50-200000-train.zarr",
+        "stream": {
+            "validation": "/mnt/abahari/dataset-stream-10000-val.zarr",
+            "test": "/mnt/abahari/dataset-stream-10000-test.zarr"
+        },
+        "reversal": {
+            "validation": "/mnt/abahari/dataset-reversal-10000-val.zarr",
+            "test": "/mnt/abahari/dataset-reversal-10000-test.zarr"
+        }
     },
-    "finetune_reversals_dataset_path": {
-        "train": "/mnt/abahari/dataset-reversals-train.zarr",
-        "validation": "/mnt/abahari/dataset-reversals-val.zarr",
-        "test_windowed": "/mnt/abahari/dataset-reversals-test-windowed.zarr",
-        "test_full": "/mnt/abahari/dataset-reversals-test-full.zarr",
-        "stats": "/mnt/abahari/reversals_dataset_20000-stats.csv"        
-    },
-    "stats_path": "/mnt/abahari/stats-reversals.csv",
+    "stats_path": "/mnt/abahari/stats5050-reversals.csv",
     "num_single_sample_timesteps": 1000,
     "input_window_length": 100,
     "label_window_length": 50,
-    "window_stride": 10,
+    "window_stride": 5,
     "input_features": [
         "psi_e",
         "b_e",
@@ -48,6 +45,6 @@
     "position_wise_nn_dim": 64,
     "dropout": 0.5,
     "batch_size": 256,
-    "epochs": 8,
+    "epochs": 7,
     "learning_rate": 0.001
 }

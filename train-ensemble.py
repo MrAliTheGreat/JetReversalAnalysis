@@ -5,11 +5,10 @@ with open("./params.json", mode = "r", encoding = "utf-8") as f:
     seed_vals = data["seed_vals"]
     ensemble_root_path = data["ensemble_root_path"]
     dataset_path_train = data["dataset_path"]["train"]
-    dataset_path_val = data["dataset_path"]["validation"]
-    dataset_finetune_path_train = data["finetune_reversals_dataset_path"]["train"]
-    dataset_finetune_path_val = data["finetune_reversals_dataset_path"]["validation"]
-    num_single_sample_timesteps = data["num_single_sample_timesteps"]
-    window_stride = data["window_stride"]
+    dataset_path_stream_val = data["dataset_path"]["stream"]["validation"]
+    dataset_path_stream_test = data["dataset_path"]["stream"]["test"]
+    dataset_path_reversal_val = data["dataset_path"]["reversal"]["validation"]
+    dataset_path_reversal_test = data["dataset_path"]["reversal"]["test"]
     input_window_length = data["input_window_length"]
     label_window_length = data["label_window_length"]
     input_features = data["input_features"]
@@ -44,10 +43,9 @@ from utils.pipeline.Monitor import Overfit
 
 
 
-def create_data_loaders(dataset_path_train, dataset_path_val):
-    df_train = WindowedDataset(dataset_path = dataset_path_train)
-    data_loader_train = DataLoader(
-        df_train,
+def create_data_loader(dataset_path):
+    return DataLoader(
+        WindowedDataset(dataset_path = dataset_path),
         batch_size = batch_size,
         shuffle = True,
         num_workers = 8,
@@ -56,39 +54,40 @@ def create_data_loaders(dataset_path_train, dataset_path_val):
         persistent_workers = True
     )
 
-    df_val = WindowedDataset(dataset_path = dataset_path_val)
-    data_loader_val = DataLoader(
-        df_val,
-        batch_size = batch_size,
-        shuffle = True,
-        num_workers = 8,
-        prefetch_factor = 4,
-        pin_memory = True,
-        persistent_workers = True
-    )
 
-    return data_loader_train, data_loader_val
-
-
-def run_model_process(model, device, data_loader_train, data_loader_val, optimizer, label_features, label_window_length, epochs, model_path, mode = "pretrain"):
+def run_model_process(
+        model,
+        device,
+        data_loader_train,
+        data_loader_val_stream,
+        data_loader_val_reversal,
+        optimizer,
+        label_features,
+        label_window_length,
+        epochs,
+        model_path,
+        mode = "50_50"
+    ):
     # overfit_monitor = Overfit()
     # overfit_count = 0
 
-    # criterion = torch.nn.MSELoss()
     criterion = torch.nn.L1Loss()
 
     train_r2 = R2Score(multioutput = "uniform_average").to(device)
-    val_r2 = R2Score(multioutput = "uniform_average").to(device)
+    val_stream_r2 = R2Score(multioutput = "uniform_average").to(device)
+    val_reversal_r2 = R2Score(multioutput = "uniform_average").to(device)
 
     train_per_feature_pearson = PearsonCorrCoef(num_outputs = len(label_features)).to(device)
-    val_per_feature_pearson = PearsonCorrCoef(num_outputs = len(label_features)).to(device)
+    val_stream_per_feature_pearson = PearsonCorrCoef(num_outputs = len(label_features)).to(device)
+    val_reversal_per_feature_pearson = PearsonCorrCoef(num_outputs = len(label_features)).to(device)
 
     train_per_timestep_r2 = [R2Score(multioutput = "uniform_average").to(device) for _ in range(label_window_length)]
-    val_per_timestep_r2 = [R2Score(multioutput = "uniform_average").to(device) for _ in range(label_window_length)]
+    val_stream_per_timestep_r2 = [R2Score(multioutput = "uniform_average").to(device) for _ in range(label_window_length)]
+    val_reversal_per_timestep_r2 = [R2Score(multioutput = "uniform_average").to(device) for _ in range(label_window_length)]
 
     train_per_feature_r2 = R2Score(multioutput = "raw_values").to(device)
-    val_per_feature_r2 = R2Score(multioutput = "raw_values").to(device)
-
+    val_stream_per_feature_r2 = R2Score(multioutput = "raw_values").to(device)
+    val_reversal_per_feature_r2 = R2Score(multioutput = "raw_values").to(device)
 
     for epoch in range(epochs):
         train_loss, train_r2_value, train_ft_r2s, train_ts_r2s, train_feature_pearsons = train(
@@ -105,17 +104,32 @@ def run_model_process(model, device, data_loader_train, data_loader_val, optimiz
             total_epochs = epochs
         )
 
-        val_loss, val_r2_value, val_ft_r2s, val_ts_r2s, val_feature_pearsons = validate(
+        val_stream_loss, val_stream_r2_value, val_stream_ft_r2s, val_stream_ts_r2s, val_stream_feature_pearsons = validate(
             model = model,
             criterion = criterion,
-            r2 = val_r2,
-            per_timestep_r2 = val_per_timestep_r2,
-            per_feature_r2 = val_per_feature_r2,
-            per_feature_pearson = val_per_feature_pearson,
-            data_loader = data_loader_val,
+            r2 = val_stream_r2,
+            per_timestep_r2 = val_stream_per_timestep_r2,
+            per_feature_r2 = val_stream_per_feature_r2,
+            per_feature_pearson = val_stream_per_feature_pearson,
+            data_loader = data_loader_val_stream,
             device = device,
             epoch = epoch,
-            total_epochs = epochs
+            total_epochs = epochs,
+            target = "Stream"
+        )
+
+        val_reversal_loss, val_reversal_r2_value, val_reversal_ft_r2s, val_reversal_ts_r2s, val_reversal_feature_pearsons = validate(
+            model = model,
+            criterion = criterion,
+            r2 = val_reversal_r2,
+            per_timestep_r2 = val_reversal_per_timestep_r2,
+            per_feature_r2 = val_reversal_per_feature_r2,
+            per_feature_pearson = val_reversal_per_feature_pearson,
+            data_loader = data_loader_val_reversal,
+            device = device,
+            epoch = epoch,
+            total_epochs = epochs,
+            target = "Reversal"
         )
 
     # if(overfit_monitor.check(epoch = epoch, train_loss = train_loss, val_loss = val_loss)):
@@ -127,19 +141,25 @@ def run_model_process(model, device, data_loader_train, data_loader_val, optimiz
         f.write(f"Num trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}\n")
         f.write(f"{model_path}\n\n")
         f.write(f"Train Loss: {train_loss}, Train R2: {train_r2_value}\n")
-        f.write(f"Val Loss: {val_loss}, Val R2: {val_r2_value}\n\n")
+        f.write(f"Val Stream Loss: {val_stream_loss}, Val Stream R2: {val_stream_r2_value}\n")
+        f.write(f"Val Reversal Loss: {val_reversal_loss}, Val Reversal R2: {val_reversal_r2_value}\n\n")
         
         f.write(f"Train Per Feature R2:\n")
         for i in range(len(label_features)):
             f.write(f"    {label_features[i]}: {train_ft_r2s[i]:.6f}\n")
-        f.write(f"Val Per Feature R2:\n")
+        f.write(f"Val Stream Per Feature R2:\n")
         for i in range(len(label_features)):
-            f.write(f"    {label_features[i]}: {val_ft_r2s[i]:.6f}\n")
+            f.write(f"    {label_features[i]}: {val_stream_ft_r2s[i]:.6f}\n")
+        f.write(f"Val Reversal Per Feature R2:\n")
+        for i in range(len(label_features)):
+            f.write(f"    {label_features[i]}: {val_reversal_ft_r2s[i]:.6f}\n")
 
         f.write("\nTrain Per Feature Pearson:\n")
         f.write(f"    {[f'{f_p:.6f}' for f_p in train_feature_pearsons]}\n")
-        f.write("Val Per Feature Pearson:\n")
-        f.write(f"    {[f'{f_p:.6f}' for f_p in val_feature_pearsons]}\n")
+        f.write("Val Stream Per Feature Pearson:\n")
+        f.write(f"    {[f'{f_p:.6f}' for f_p in val_stream_feature_pearsons]}\n")
+        f.write("Val Reversal Per Feature Pearson:\n")
+        f.write(f"    {[f'{f_p:.6f}' for f_p in val_reversal_feature_pearsons]}\n")
 
         f.write("\n==========================================\n")
 
@@ -149,36 +169,15 @@ def run_model_process(model, device, data_loader_train, data_loader_val, optimiz
         f.write("Train R2\n")
         f.write(str(train_ts_r2s))
         f.write("\n\n")
-        f.write("Val R2\n")
-        f.write(str(val_ts_r2s))
+        f.write("Val Stream R2\n")
+        f.write(str(val_stream_ts_r2s))
+        f.write("\n\n")
+        f.write("Val Reversal R2\n")
+        f.write(str(val_reversal_ts_r2s))
         f.write("\n\n")
         f.write("==========================================\n")
 
     print(f"{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}: {model_path} saved!\n")
-
-    return model
-
-def prepare_model_finetuning(model):
-    # Freeze nothing
-    for p in model.parameters():
-        p.requires_grad = True
-
-    # # Freeze everything
-    # for p in model.parameters():
-    #     p.requires_grad = False
-
-    # # Unfreeze decoder, lm_head, bos_projector, and last encoder block
-    # for p in model.decoder.parameters():
-    #     p.requires_grad = True
-
-    # for p in model.lm_head.parameters():
-    #     p.requires_grad = True
-
-    # for p in model.bos_projector.parameters():
-    #     p.requires_grad = True
-
-    # for p in model.encoder.block[-1].parameters():
-    #     p.requires_grad = True
 
     return model
 
@@ -187,15 +186,15 @@ def prepare_model_finetuning(model):
 
 
 setup = f'''
-dataset: pretrain stream dataset + finetune both direction reversal dataset (Nothing frozen)
+dataset: Train 100000 near-reversal windows 100000 stream windows 50/50
 bos_projector: non-linear (1 LeakyReLU)
 bos_input: encoder hidden state of last input time-step
 positional encoding: sin, cos
 Loss: MAE + 0.1 * sum(Symmetry MAE(u, e, plus))
-num_single_sample_timesteps: {num_single_sample_timesteps}
+num_single_sample_timesteps: 1000 reversal 100000 stream
 input_window_len: {input_window_length}
 label_window_len: {label_window_length}
-window_stride: {window_stride}, 10 reversals
+window_stride: 5 reversal 20 stream
 relative_attention_num_buckets: {relative_attention_num_buckets}
 embedding_dim: {embedding_dim}
 num_attention_head: {num_attention_head}
@@ -204,8 +203,8 @@ num_decoder_layers: {num_decoder_layers}
 position_wise_nn_dim: {position_wise_nn_dim}
 dropout: {dropout}
 batch_size: {batch_size}
-epochs: {epochs}, /2 finetuning
-learning_rate: {learning_rate}, *0.05 finetuning
+epochs: {epochs}
+learning_rate: {learning_rate}
 {input_features} -> {label_features}
 extra features: {extra_features}
 ___________________________________________________________________________________________________________
@@ -224,16 +223,21 @@ for seed_val in seed_vals:
     random.seed(seed_val)
     np.random.seed(seed_val)
 
-    data_loader_train, data_loader_val = create_data_loaders(
-        dataset_path_train = dataset_path_train,
-        dataset_path_val = dataset_path_val
+    data_loader_train = create_data_loader(
+        dataset_path = dataset_path_train
     )
-
-    # Same input and output window! Just shorter stride (10 vs 35) for more detailed data
-    data_loader_train_finetune, data_loader_val_finetune = create_data_loaders(
-        dataset_path_train = dataset_finetune_path_train,
-        dataset_path_val = dataset_finetune_path_val
+    data_loader_val_stream = create_data_loader(
+        dataset_path = dataset_path_stream_val
     )
+    data_loader_val_reversal = create_data_loader(
+        dataset_path = dataset_path_reversal_val
+    )
+    # data_loader_test_stream = create_data_loader(
+    #     dataset_path = dataset_path_stream_test
+    # )
+    # data_loader_test_reversal = create_data_loader(
+    #     dataset_path = dataset_path_reversal_test
+    # )
 
     model = TimeSeriesHuggingFaceTransformer(
         input_window_len = input_window_length,
@@ -251,9 +255,7 @@ for seed_val in seed_vals:
 
     # model = torch.compile(model)    # nvcc not found!
 
-    # model_path = f"{ensemble_root_path}/{num_log}/T5-{input_window_length}-{label_window_length}-{window_stride}-{seed_val}.pt"
-
-    model_path = f"{ensemble_root_path}/{num_log}/T5-{input_window_length}-{label_window_length}-p{window_stride}-f10-{seed_val}.pt"
+    model_path = f"{ensemble_root_path}/{num_log}/T5-{input_window_length}-{label_window_length}-s20-r5-{seed_val}.pt"
 
 
     optimizer = torch.optim.Adam(
@@ -264,32 +266,13 @@ for seed_val in seed_vals:
         model = model,
         device = device,
         data_loader_train = data_loader_train,
-        data_loader_val = data_loader_val,
+        data_loader_val_stream = data_loader_val_stream,
+        data_loader_val_reversal = data_loader_val_reversal,
         optimizer = optimizer,
         label_features = label_features,
         label_window_length = label_window_length,
         epochs = epochs,
-        model_path = model_path,
-        mode = "pretrain"
-    )
-
-    model = prepare_model_finetuning(model = model)
-
-    optimizer_finetune = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        lr = learning_rate * 0.05
-    )
-    model = run_model_process(
-        model = model,
-        device = device,
-        data_loader_train = data_loader_train_finetune,
-        data_loader_val = data_loader_val_finetune,
-        optimizer = optimizer_finetune,
-        label_features = label_features,
-        label_window_length = label_window_length,
-        epochs = int(epochs / 2),
-        model_path = model_path,
-        mode = "finetune"
+        model_path = model_path
     )
 
     torch.save(model, model_path)

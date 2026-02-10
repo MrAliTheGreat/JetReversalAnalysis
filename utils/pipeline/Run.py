@@ -218,7 +218,19 @@ def autoregress(model, batch_x, batch_y, device, extract_attention = False):
     return preds
 
 
-def validate(model, criterion, r2, per_timestep_r2, per_feature_r2, per_feature_pearson, data_loader, device, epoch, total_epochs):
+def validate(
+        model,
+        criterion,
+        r2,
+        per_timestep_r2,
+        per_feature_r2,
+        per_feature_pearson,
+        data_loader,
+        device,
+        epoch,
+        total_epochs,
+        target,
+    ):
     '''
         Validate for a single epoch
     '''
@@ -280,17 +292,17 @@ def validate(model, criterion, r2, per_timestep_r2, per_feature_r2, per_feature_
     feature_r2s = per_feature_r2.compute().cpu().numpy()
     per_feature_r2.reset()
 
-    print(f"Epoch [{epoch + 1}/{total_epochs}], Val Loss: {avg_loss:.6f}, Val R2: {avg_r2:.6f}")
+    print(f"Epoch [{epoch + 1}/{total_epochs}], Val {target} Loss: {avg_loss:.6f}, Val {target} R2: {avg_r2:.6f}")
 
     print("\nPer Feature Pearson:")
     print(f"    {[f'{f_p:.6f}' for f_p in feature_pearsons]}")
 
     sorted_idxs = np.argsort(timestep_r2s)
-    print("\nWorst 5 Time-Steps Val R2:")
+    print(f"\nWorst 5 Time-Steps Val {target} R2:")
     for idx in sorted_idxs[:5]:
         print(f"    Time-step {idx + 1}: R2 = {timestep_r2s[idx]:.6f}")
 
-    print("Best 5 Time-Steps Val R2:")
+    print(f"Best 5 Time-Steps Val {target} R2:")
     for idx in sorted_idxs[-5:][::-1]:
         print(f"    Time-step {idx + 1}: R2 = {timestep_r2s[idx]:.6f}")
 
