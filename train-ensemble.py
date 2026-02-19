@@ -5,12 +5,11 @@ with open("./params.json", mode = "r", encoding = "utf-8") as f:
     seed_vals = data["seed_vals"]
     ensemble_root_path = data["ensemble_root_path"]
     dataset_path_train = data["dataset_path"]["train"]
-    dataset_path_stream_val = data["dataset_path"]["stream"]["validation"]
-    dataset_path_stream_test = data["dataset_path"]["stream"]["test"]
-    dataset_path_reversal_val = data["dataset_path"]["reversal"]["validation"]
-    dataset_path_reversal_test = data["dataset_path"]["reversal"]["test"]
+    dataset_path_val_stream = data["dataset_path"]["validation"]["stream"]
+    dataset_path_val_reversal = data["dataset_path"]["validation"]["reversal"]
     input_window_length = data["input_window_length"]
     label_window_length = data["label_window_length"]
+    window_stride = data["window_stride"]
     input_features = data["input_features"]
     label_features = data["label_features"]
     extra_features = data["extra_features"]
@@ -186,7 +185,7 @@ def run_model_process(
 
 
 setup = f'''
-dataset: Train 100000 near-reversal windows 100000 stream windows 50/50
+dataset: Train 100000 near-reversal windows 100000 stream windows 50/50 with windowed stats calculation and normalization
 bos_projector: non-linear (1 LeakyReLU)
 bos_input: encoder hidden state of last input time-step
 positional encoding: sin, cos
@@ -194,7 +193,7 @@ Loss: MAE + 0.1 * sum(Symmetry MAE(u, e, plus))
 num_single_sample_timesteps: 1000 reversal 100000 stream
 input_window_len: {input_window_length}
 label_window_len: {label_window_length}
-window_stride: 5 reversal 20 stream
+window_stride: Both 5
 relative_attention_num_buckets: {relative_attention_num_buckets}
 embedding_dim: {embedding_dim}
 num_attention_head: {num_attention_head}
@@ -227,17 +226,11 @@ for seed_val in seed_vals:
         dataset_path = dataset_path_train
     )
     data_loader_val_stream = create_data_loader(
-        dataset_path = dataset_path_stream_val
+        dataset_path = dataset_path_val_stream
     )
     data_loader_val_reversal = create_data_loader(
-        dataset_path = dataset_path_reversal_val
+        dataset_path = dataset_path_val_reversal
     )
-    # data_loader_test_stream = create_data_loader(
-    #     dataset_path = dataset_path_stream_test
-    # )
-    # data_loader_test_reversal = create_data_loader(
-    #     dataset_path = dataset_path_reversal_test
-    # )
 
     model = TimeSeriesHuggingFaceTransformer(
         input_window_len = input_window_length,
@@ -255,7 +248,7 @@ for seed_val in seed_vals:
 
     # model = torch.compile(model)    # nvcc not found!
 
-    model_path = f"{ensemble_root_path}/{num_log}/T5-{input_window_length}-{label_window_length}-s20-r5-{seed_val}.pt"
+    model_path = f"{ensemble_root_path}/{num_log}/T5-{input_window_length}-{label_window_length}-{window_stride}-{seed_val}.pt"
 
 
     optimizer = torch.optim.Adam(
@@ -280,99 +273,6 @@ for seed_val in seed_vals:
     del model
     torch.cuda.empty_cache()
 
-
-
-    ### BEFORE MODULARIZATION ###
-    # criterion = torch.nn.MSELoss()
-    # optimizer = torch.optim.Adam(
-    #     model.parameters(),
-    #     lr = learning_rate
-    # )
-
-    # train_r2 = R2Score(multioutput = "uniform_average").to(device)
-    # val_r2 = R2Score(multioutput = "uniform_average").to(device)
-
-    # train_per_feature_pearson = PearsonCorrCoef(num_outputs = len(label_features)).to(device)
-    # val_per_feature_pearson = PearsonCorrCoef(num_outputs = len(label_features)).to(device)
-
-    # train_per_timestep_r2 = [R2Score(multioutput = "uniform_average").to(device) for _ in range(label_window_length)]
-    # val_per_timestep_r2 = [R2Score(multioutput = "uniform_average").to(device) for _ in range(label_window_length)]
-
-    # train_per_feature_r2 = R2Score(multioutput = "raw_values").to(device)
-    # val_per_feature_r2 = R2Score(multioutput = "raw_values").to(device)
-
-
-    # for epoch in range(epochs):
-    #     train_loss, train_r2_value, train_ft_r2s, train_ts_r2s, train_feature_pearsons = train(
-    #         model = model,
-    #         optimizer = optimizer,
-    #         criterion = criterion,
-    #         r2 = train_r2,
-    #         per_timestep_r2 = train_per_timestep_r2,
-    #         per_feature_r2 = train_per_feature_r2,
-    #         per_feature_pearson = train_per_feature_pearson,
-    #         data_loader = data_loader_train,
-    #         device = device,
-    #         epoch = epoch,
-    #         total_epochs = epochs
-    #     )
-
-    #     val_loss, val_r2_value, val_ft_r2s, val_ts_r2s, val_feature_pearsons = validate(
-    #         model = model,
-    #         criterion = criterion,
-    #         r2 = val_r2,
-    #         per_timestep_r2 = val_per_timestep_r2,
-    #         per_feature_r2 = val_per_feature_r2,
-    #         per_feature_pearson = val_per_feature_pearson,
-    #         data_loader = data_loader_val,
-    #         device = device,
-    #         epoch = epoch,
-    #         total_epochs = epochs
-    #     )
-
-    # # if(overfit_monitor.check(epoch = epoch, train_loss = train_loss, val_loss = val_loss)):
-    # #     break
-
-    # model_path = f"{ensemble_root_path}/{num_log}/T5-{input_window_length}-{label_window_length}-{window_stride}-{seed_val}.pt"
-
-    # torch.save(model, model_path)
-
-    # with open(f"./ensemble/logs/{num_log}.log", mode = "a") as f:
-    #     f.write(f"seed: {seed_val}\n")
-    #     f.write(f"Num trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}\n")
-    #     f.write(f"{model_path}\n\n")
-    #     f.write(f"Train Loss: {train_loss}, Train R2: {train_r2_value}\n")
-    #     f.write(f"Val Loss: {val_loss}, Val R2: {val_r2_value}\n\n")
-        
-    #     f.write(f"Train Per Feature R2:\n")
-    #     for i in range(len(label_features)):
-    #         f.write(f"    {label_features[i]}: {train_ft_r2s[i]:.6f}\n")
-    #     f.write(f"Val Per Feature R2:\n")
-    #     for i in range(len(label_features)):
-    #         f.write(f"    {label_features[i]}: {val_ft_r2s[i]:.6f}\n")
-
-    #     f.write("\nTrain Per Feature Pearson:\n")
-    #     f.write(f"    {[f'{f_p:.6f}' for f_p in train_feature_pearsons]}\n")
-    #     f.write("Val Per Feature Pearson:\n")
-    #     f.write(f"    {[f'{f_p:.6f}' for f_p in val_feature_pearsons]}\n")
-
-    #     f.write("\n==========================================\n")
-
-    # with open(f"./ensemble/logs/{num_log}-timestepR2.log", mode = "a") as f:
-    #     f.write(f"seed: {seed_val}\n")
-    #     f.write("Train R2\n")
-    #     f.write(str(train_ts_r2s))
-    #     f.write("\n\n")
-    #     f.write("Val R2\n")
-    #     f.write(str(val_ts_r2s))
-    #     f.write("\n\n")
-    #     f.write("==========================================\n")
-
-
-    # del model
-    # torch.cuda.empty_cache()
-
-    # print(f"{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}: {model_path} saved!\n")
 
 toc = datetime.now()
 print(f"{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}: Ensemble training done!")

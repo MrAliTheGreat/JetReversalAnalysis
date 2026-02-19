@@ -1,18 +1,27 @@
 import polars as pl
 import numpy as np
 import json
+import argparse
 
 # Use full path instead of ~
 with open("/users/labnet5/gr5/abahari/Documents/Thesis/src/params.json", mode = "r", encoding = "utf-8") as f:
     data = json.load(f)
     seed_val = data["seed_val"]
-    dataset_path = "/mnt/abahari/reversals_dataset_neg2pos_10000.csv"
-    train_ratio = 0.3        # 0.2 - reversals: 0.010
-    val_ratio = 0.1          # 0.03 - 0.003
-    test_ratio = 0.1         # 0.02 - 0.007
+    train_ratio = 0.35
+    val_ratio = 0.1
+    test_ratio = 0.05
     stats_ratio = 0.5
 
 np.random.seed(seed_val)
+
+parser = argparse.ArgumentParser(description = "Dataset Information")
+parser.add_argument(
+    "--input-dataset",
+    required = True,
+    help = "Input CSV Dataset"
+)
+args = parser.parse_args()
+dataset_path = args.input_dataset
 
 
 def get_num_data_points(dataset_path):

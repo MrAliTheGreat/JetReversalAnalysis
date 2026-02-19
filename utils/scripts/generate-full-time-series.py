@@ -9,14 +9,16 @@ import argparse
 # Use full path instead of ~
 with open("/users/labnet5/gr5/abahari/Documents/Thesis/src/params.json", mode = "r", encoding = "utf-8") as f:
     data = json.load(f)
-    num_single_sample_timesteps = data["num_single_sample_timesteps"]
     label_features = data["label_features"]
     extra_features = data["extra_features"]
 
 parser = argparse.ArgumentParser(description = "Dataset Information")
 parser.add_argument("--input-dataset", required = True, help = "Input CSV Test Dataset")
 parser.add_argument("--output-zarr", required = True, help = "Output Zarr Dataset")
+parser.add_argument("--num-timesteps", required = True, help = "num_single_sample_timesteps")
 args = parser.parse_args()
+
+num_single_sample_timesteps = int(args.num_timesteps)
 
 
 compressor = Blosc(

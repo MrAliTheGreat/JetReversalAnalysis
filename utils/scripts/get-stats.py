@@ -11,6 +11,8 @@ with open("/users/labnet5/gr5/abahari/Documents/Thesis/src/params.json", mode = 
 
 def get_mean_std(dataset_path, cols):
     '''
+        Calculates mean and std across time-series in a csv file
+    
         input:
             dataset_path: path to csv dataset
             cols: target columns in the dataset for getting the stats
