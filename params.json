@@ -22,7 +22,7 @@
     },
     "stats_path": "/mnt/abahari/stats5050.csv",
     "num_single_sample_timesteps": 1000,
-    "input_window_length": 100,
+    "input_window_length": 150,
     "label_window_length": 50,
     "window_stride": 5,
     "input_features": [
@@ -50,7 +50,7 @@
     "num_decoder_layers": 5,
     "position_wise_nn_dim": 64,
     "dropout": 0.5,
-    "batch_size": 256,
+    "batch_size": 128,
     "epochs": 7,
     "learning_rate": 0.001
 }

@@ -40,6 +40,7 @@ from utils.pipeline.Model import TimeSeriesHuggingFaceTransformer
 from utils.pipeline.Run import train, validate
 from utils.pipeline.Monitor import Overfit
 
+### b_e and b_plus and eta removed from input ###
 
 
 def create_data_loader(dataset_path):
@@ -185,7 +186,7 @@ def run_model_process(
 
 
 setup = f'''
-dataset: Train 100000 near-reversal windows 100000 stream windows 50/50 with windowed stats calculation and normalization
+dataset: Train 100000 near-reversal windows 100000 stream windows 50/50, windowed stats, larger input window, lower batch_size because of running out of VRAM
 bos_projector: non-linear (1 LeakyReLU)
 bos_input: encoder hidden state of last input time-step
 positional encoding: sin, cos
