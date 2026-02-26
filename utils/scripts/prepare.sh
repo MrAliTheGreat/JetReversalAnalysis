@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Execute from main folder
+# Check all num_windows when providing different window lengths!
 
 
 python utils/scripts/split-dataset.py --input-dataset /mnt/abahari/stream_dataset_100.csv
@@ -10,8 +11,9 @@ echo "+ Split stream, reversal pos2neg, and reversal neg2pos csv datasets"
 
 ##### STATS #####
 # 147000 windows each 100 50 5
-python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_pos2neg_10000-stats.csv --output-zarr /mnt/abahari/reversals_dataset_pos2neg-stats.zarr --num-windows 100000 --num-timesteps 1000 --mode reversal --normalize n
-python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_neg2pos_10000-stats.csv --output-zarr /mnt/abahari/reversals_dataset_neg2pos-stats.zarr --num-windows 100000 --num-timesteps 1000 --mode reversal --normalize n
+# 54000 windows each 2 50 5
+python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_pos2neg_10000-stats.csv --output-zarr /mnt/abahari/reversals_dataset_pos2neg-stats.zarr --num-windows 54000 --num-timesteps 1000 --mode reversal --normalize n
+python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_neg2pos_10000-stats.csv --output-zarr /mnt/abahari/reversals_dataset_neg2pos-stats.zarr --num-windows 54000 --num-timesteps 1000 --mode reversal --normalize n
 echo "+ Generated windows for pos2neg and neg2pos reversal stats datasets and saved to Zarr files"
 
 python utils/scripts/merge-zarr-in-ram.py --datasets /mnt/abahari/reversals_dataset_neg2pos-stats.zarr/ /mnt/abahari/reversals_dataset_pos2neg-stats.zarr/ --output-zarr /mnt/abahari/reversals_dataset-stats.zarr
@@ -21,7 +23,8 @@ rm -r /mnt/abahari/reversals_dataset_neg2pos-stats.zarr/ /mnt/abahari/reversals_
 echo "+ Removed pos2neg and neg2pos reversal stats datasets"
 
 # 294000 windows 100 50 5
-python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/stream_dataset_100-stats.csv --output-zarr /mnt/abahari/stream_dataset_100-stats.zarr --num-windows 200000 --num-timesteps 100000 --mode stream --normalize n
+# 108000 windows 2 50 5
+python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/stream_dataset_100-stats.csv --output-zarr /mnt/abahari/stream_dataset_100-stats.zarr --num-windows 108000 --num-timesteps 100000 --mode stream --normalize n
 echo "+ Generated windows for stream stats dataset and saved to Zarr file"
 
 python utils/scripts/merge-zarr-in-ram.py --datasets /mnt/abahari/reversals_dataset-stats.zarr/ /mnt/abahari/stream_dataset_100-stats.zarr/ --output-zarr /mnt/abahari/dataset-stats.zarr
@@ -44,8 +47,8 @@ echo "+ Clean up stats csv files"
 
 
 ##### TRAIN #####
-python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_pos2neg_10000-train.csv --output-zarr /mnt/abahari/reversals_dataset_pos2neg-train.zarr --num-windows 50000 --num-timesteps 1000 --mode reversal --normalize y
-python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_neg2pos_10000-train.csv --output-zarr /mnt/abahari/reversals_dataset_neg2pos-train.zarr --num-windows 50000 --num-timesteps 1000 --mode reversal --normalize y
+python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_pos2neg_10000-train.csv --output-zarr /mnt/abahari/reversals_dataset_pos2neg-train.zarr --num-windows 39000 --num-timesteps 1000 --mode reversal --normalize y
+python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_neg2pos_10000-train.csv --output-zarr /mnt/abahari/reversals_dataset_neg2pos-train.zarr --num-windows 39000 --num-timesteps 1000 --mode reversal --normalize y
 echo "+ Generated windows for pos2neg and neg2pos reversal train datasets and saved to Zarr files"
 
 python utils/scripts/merge-zarr-in-ram.py --datasets /mnt/abahari/reversals_dataset_neg2pos-train.zarr/ /mnt/abahari/reversals_dataset_pos2neg-train.zarr/ --output-zarr /mnt/abahari/reversals_dataset-train.zarr
@@ -54,7 +57,7 @@ echo "+ Merged pos2neg and neg2pos reversal train datasets"
 rm -r /mnt/abahari/reversals_dataset_neg2pos-train.zarr/ /mnt/abahari/reversals_dataset_pos2neg-train.zarr/
 echo "+ Removed pos2neg and neg2pos reversal train datasets"
 
-python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/stream_dataset_100-train.csv --output-zarr /mnt/abahari/stream_dataset_100-train.zarr --num-windows 100000 --num-timesteps 100000 --mode stream --normalize y
+python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/stream_dataset_100-train.csv --output-zarr /mnt/abahari/stream_dataset_100-train.zarr --num-windows 78000 --num-timesteps 100000 --mode stream --normalize y
 echo "+ Generated windows for stream train dataset and saved to Zarr file"
 
 python utils/scripts/merge-zarr-in-ram.py --datasets /mnt/abahari/reversals_dataset-train.zarr/ /mnt/abahari/stream_dataset_100-train.zarr/ --output-zarr /mnt/abahari/dataset_5050-train.zarr
@@ -70,8 +73,8 @@ echo "+ Clean up train csv files"
 
 
 ##### VALIDATION #####
-python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_pos2neg_10000-val.csv --output-zarr /mnt/abahari/reversals_dataset_pos2neg-val.zarr --num-windows 12500 --num-timesteps 1000 --mode reversal --normalize y
-python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_neg2pos_10000-val.csv --output-zarr /mnt/abahari/reversals_dataset_neg2pos-val.zarr --num-windows 12500 --num-timesteps 1000 --mode reversal --normalize y
+python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_pos2neg_10000-val.csv --output-zarr /mnt/abahari/reversals_dataset_pos2neg-val.zarr --num-windows 10000 --num-timesteps 1000 --mode reversal --normalize y
+python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/reversals_dataset_neg2pos_10000-val.csv --output-zarr /mnt/abahari/reversals_dataset_neg2pos-val.zarr --num-windows 10000 --num-timesteps 1000 --mode reversal --normalize y
 echo "+ Generated windows for pos2neg and neg2pos reversal validation datasets and saved to Zarr files"
 
 python utils/scripts/merge-zarr-in-ram.py --datasets /mnt/abahari/reversals_dataset_neg2pos-val.zarr/ /mnt/abahari/reversals_dataset_pos2neg-val.zarr/ --output-zarr /mnt/abahari/dataset-nearReversal-val.zarr
@@ -80,7 +83,7 @@ echo "+ Merged pos2neg and neg2pos reversal validation datasets"
 rm -r /mnt/abahari/reversals_dataset_neg2pos-val.zarr/ /mnt/abahari/reversals_dataset_pos2neg-val.zarr/
 echo "+ Removed pos2neg and neg2pos reversal validation datasets"
 
-python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/stream_dataset_100-val.csv --output-zarr /mnt/abahari/dataset-stream-val.zarr --num-windows 25000 --num-timesteps 100000 --mode stream --normalize y
+python utils/scripts/generate-windowed-dataset.py --input-dataset /mnt/abahari/stream_dataset_100-val.csv --output-zarr /mnt/abahari/dataset-stream-val.zarr --num-windows 20000 --num-timesteps 100000 --mode stream --normalize y
 echo "+ Generated windows for stream train dataset and saved to Zarr file"
 
 rm /mnt/abahari/reversals_dataset_pos2neg_10000-val.csv /mnt/abahari/reversals_dataset_neg2pos_10000-val.csv /mnt/abahari/stream_dataset_100-val.csv

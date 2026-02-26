@@ -24,7 +24,7 @@ def forward_pass(model, batch_x, device, extract_attention = False):
     return outputs
 
 
-def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_feature_pearson, data_loader, device, epoch, total_epochs):
+def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_feature_pearson, data_loader, device, epoch, total_epochs, has_symmetry = True):
     '''
         Train for a single epoch
     '''
@@ -32,10 +32,11 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
     model.train()
     train_loss = 0.0
     train_loss_normal = 0.0
-    train_loss_u = 0.0
-    train_loss_plus = 0.0
-    train_loss_e = 0.0
     num_batches = 0
+    if(has_symmetry):
+        train_loss_u = 0.0
+        train_loss_plus = 0.0
+        train_loss_e = 0.0
     
     progress_bar = tqdm(
         data_loader,
@@ -43,35 +44,8 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
     )
 
     for batch_x, batch_y in progress_bar:
-        # -psi_e, -b_e, -psi_plus, -b_plus, u, -eta
-        batch_x_u = batch_x.clone()
-        batch_x_u[:, :, :4] *= -1
-        batch_x_u[:, :, 5] *= -1
-        # batch_y_u = batch_y.clone()
-        # batch_y_u[:, :, :4] *= -1
-
-        # -psi_e, -b_e, psi_plus, b_plus, -u, -eta
-        batch_x_plus = batch_x.clone()
-        batch_x_plus[:, :, :2] *= -1
-        batch_x_plus[:, :, 4:] *= -1
-        # batch_y_plus = batch_y.clone()
-        # batch_y_plus[:, :, :2] *= -1
-        # batch_y_plus[:, :, 4] *= -1
-
-        # psi_e, b_e, -psi_plus, -b_plus, -u, eta
-        batch_x_e = batch_x.clone()
-        batch_x_e[:, :, 2:5] *= -1
-        # batch_y_e = batch_y.clone()
-        # batch_y_e[:, :, 2:] *= -1
-
         batch_x = batch_x.to(device)
         batch_y = batch_y.to(device)
-        batch_x_u = batch_x_u.to(device)
-        # batch_y_u = batch_y_u.to(device)
-        batch_x_plus = batch_x_plus.to(device)
-        # batch_y_plus = batch_y_plus.to(device)
-        batch_x_e = batch_x_e.to(device)
-        # batch_y_e = batch_y_e.to(device)
 
         # num_input_batch_samples, num_input_timesteps, _ = batch_x.shape
         # num_label_batch_samples, num_label_timesteps, _ = batch_y.shape
@@ -80,24 +54,50 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
         optimizer.zero_grad()
 
         outputs = forward_pass(model = model, batch_x = batch_x, device = device)
-        outputs_u = forward_pass(model = model, batch_x = batch_x_u, device = device)
-        outputs_plus = forward_pass(model = model, batch_x = batch_x_plus, device = device)
-        outputs_e = forward_pass(model = model, batch_x = batch_x_e, device = device)
-
         loss_normal = criterion(outputs.logits, batch_y)    # logits are predictions
-        loss_u = criterion(outputs.logits[:, :, -1], outputs_u.logits[:, :, -1])
-        loss_plus = criterion(outputs.logits[:, :, 2:4], outputs_plus.logits[:, :, 2:4])
-        loss_e = criterion(outputs.logits[:, :, :2], outputs_e.logits[:, :, :2])
+        loss = loss_normal
 
-        loss = 1.0 * loss_normal + 0.1 * loss_u + 0.1 * loss_plus + 0.1 * loss_e
+        if(has_symmetry):
+            # -psi_e, -psi_plus, u
+            batch_x_u = batch_x.clone()
+            batch_x_u[:, :, :2] *= -1
+
+            # -psi_e, psi_plus, -u
+            batch_x_plus = batch_x.clone()
+            batch_x_plus[:, :, 0] *= -1
+            batch_x_plus[:, :, 2] *= -1
+
+            # psi_e, -psi_plus, -u
+            batch_x_e = batch_x.clone()
+            batch_x_e[:, :, 1:] *= -1
+
+            symmetry_batch = torch.cat([batch_x_u, batch_x_plus, batch_x_e], dim = 0)
+            symmetry_outputs = forward_pass(model = model, batch_x = symmetry_batch, device = device)
+            outputs_u, outputs_plus, outputs_e = torch.chunk(symmetry_outputs.logits, 3, dim = 0)
+
+            target_u = outputs.logits.clone().detach()
+            target_u[:, :, :2] *= -1
+            loss_u = criterion(target_u, outputs_u)
+
+            target_plus = outputs.logits.clone().detach()
+            target_plus[:, :, 0] *= -1
+            target_plus[:, :, 2] *= -1
+            loss_plus = criterion(target_plus, outputs_plus)
+
+            target_e = outputs.logits.clone().detach()
+            target_e[:, :, 1:] *= -1
+            loss_e = criterion(target_e, outputs_e)
+
+            loss = loss_normal + 0.2 * (loss_u + loss_plus + loss_e)
 
         loss.backward()
         optimizer.step()
 
         train_loss_normal += loss_normal.item()
-        train_loss_u += loss_u.item()
-        train_loss_plus += loss_plus.item()
-        train_loss_e += loss_e.item()
+        if(has_symmetry):
+            train_loss_u += loss_u.item()
+            train_loss_plus += loss_plus.item()
+            train_loss_e += loss_e.item()
 
         train_loss += loss.item()
         num_batches += 1
@@ -121,9 +121,10 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
         )
 
     avg_loss_normal = train_loss_normal / num_batches
-    avg_loss_u = train_loss_u / num_batches
-    avg_loss_plus = train_loss_plus / num_batches
-    avg_loss_e = train_loss_e / num_batches
+    if(has_symmetry):
+        avg_loss_u = train_loss_u / num_batches
+        avg_loss_plus = train_loss_plus / num_batches
+        avg_loss_e = train_loss_e / num_batches
 
     avg_loss = train_loss / num_batches
     avg_r2 = r2.compute().item()
@@ -139,7 +140,10 @@ def train(model, optimizer, criterion, r2, per_timestep_r2, per_feature_r2, per_
     per_feature_r2.reset()
 
     print(f"Epoch [{epoch + 1}/{total_epochs}], Train Loss: {avg_loss:.6f}, Train R2: {avg_r2:.6f}")
-    print(f"    Train Normal Loss: {avg_loss_normal:.6f}, Same U Loss: {avg_loss_u:.6f}, Same Plus Loss: {avg_loss_plus:.6f}, Same E Loss: {avg_loss_e:.6f}")
+    if(has_symmetry):
+        print(f"    Train Normal Loss: {avg_loss_normal:.6f}, Same U Loss: {avg_loss_u:.6f}, Same Plus Loss: {avg_loss_plus:.6f}, Same E Loss: {avg_loss_e:.6f}")
+    else:
+        print(f"    Train Normal Loss: {avg_loss_normal:.6f}")
 
     print("\nPer Feature Pearson:")
     print(f"    {[f'{f_p:.6f}' for f_p in feature_pearsons]}")

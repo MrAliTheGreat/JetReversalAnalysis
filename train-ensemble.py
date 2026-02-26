@@ -186,7 +186,7 @@ def run_model_process(
 
 
 setup = f'''
-dataset: Train 100000 near-reversal windows 100000 stream windows 50/50, windowed stats, larger input window, lower batch_size because of running out of VRAM
+dataset: Train 78000 near-reversal windows 78000 stream windows 50/50 (20000 val), windowed stats, hidden features, 1.0 normal 0.2 symmetry losses
 bos_projector: non-linear (1 LeakyReLU)
 bos_input: encoder hidden state of last input time-step
 positional encoding: sin, cos

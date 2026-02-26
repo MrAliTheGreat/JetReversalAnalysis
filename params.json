@@ -22,21 +22,16 @@
     },
     "stats_path": "/mnt/abahari/stats5050.csv",
     "num_single_sample_timesteps": 1000,
-    "input_window_length": 150,
+    "input_window_length": 100,
     "label_window_length": 50,
     "window_stride": 5,
     "input_features": [
-        "psi_e",
         "b_e",
-        "psi_plus",
         "b_plus",
-        "u_list",
-        "eta_list"
+        "u_list"
     ],
     "label_features": [
-        "psi_e",
         "b_e",
-        "psi_plus",
         "b_plus",
         "u_list"
     ],
