@@ -1,0 +1,51 @@
+{
+    "seed_val": 7,
+    "seed_vals": [0, 5, 10, 15, 20, 25, 30, 35, 40, 45],
+    "model_path": "./models/transformer-150-50-10.pt",
+    "ensemble_root_path": "./ensemble",
+    "dataset_path": {
+        "train": "/mnt/abahari/dataset_5050-train.zarr",
+        "validation": {
+            "stream": "/mnt/abahari/dataset-stream-val.zarr",
+            "reversal": "/mnt/abahari/dataset-nearReversal-val.zarr"
+        },
+        "test": {
+            "stream": {
+                "windowed": "/mnt/abahari/dataset-stream-windowed-test.zarr",
+                "full": "/mnt/abahari/dataset-stream-full-test.zarr"
+            },
+            "reversal": {
+                "windowed": "/mnt/abahari/dataset-reversal-windowed-test.zarr",
+                "full": "/mnt/abahari/dataset-reversal-full-test.zarr"
+            }
+        }
+    },
+    "stats_path": "/mnt/abahari/stats5050.csv",
+    "num_single_sample_timesteps": 1000,
+    "input_window_length": 100,
+    "label_window_length": 50,
+    "window_stride": 5,
+    "input_features": [
+        "b_e",
+        "b_plus",
+        "u_list"
+    ],
+    "label_features": [
+        "b_e",
+        "b_plus",
+        "u_list"
+    ],
+    "extra_features": [
+        "dom_eigenvals"
+    ],
+    "relative_attention_num_buckets": 64,
+    "embedding_dim": 128,
+    "num_attention_head": 8,
+    "num_encoder_layers": 5,
+    "num_decoder_layers": 5,
+    "position_wise_nn_dim": 64,
+    "dropout": 0.5,
+    "batch_size": 128,
+    "epochs": 7,
+    "learning_rate": 0.001
+}
