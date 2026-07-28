@@ -86,15 +86,34 @@ class TimeSeriesHuggingFaceTransformer(T5ForConditionalGeneration):
 
         return outputs
     
+    # def get_average_attention_values(self, attention_type = "cross_attention"):
+    #     '''
+    #         batch_size = 1
+    #         AUTOREGRESSION!!!
+    #         self.attention_weights[attention_type]
+    #             Type: list
+    #             Shape: output_window_num_timesteps * [torch.Size([num_decoder_layers, batch_size = 1, num_heads, single_input_timestep = 1, input_window_num_timesteps])]
+    #         Returns
+    #             Type: torch.tensor
+    #             Shape: (output_window_num_timesteps, input_window_num_timesteps)
+    #     '''
+    #     return torch.stack(self.attention_weights[attention_type], dim = 0).squeeze_(dim = 2).squeeze_(dim = 3).mean(dim = 1).mean(dim = 1).cpu()
+
     def get_average_attention_values(self, attention_type = "cross_attention"):
         '''
+            batch_size >= 1
+            One shot label window prediction
             self.attention_weights[attention_type]
                 Type: list
-                Shape: output_window_num_timesteps * [torch.Size([num_decoder_layers, batch_size = 1, num_heads, single_input_timestep = 1, input_window_num_timesteps])]
+                Shape: (single_input_timestep = 1) * [torch.Size([num_decoder_layers, batch_size, num_heads, output_window_num_timesteps, input_window_num_timesteps])]
             Returns
                 Type: torch.tensor
-                Shape: (output_window_num_timesteps, input_window_num_timesteps)
+                Shape: (batch_size, output_window_num_timesteps, input_window_num_timesteps)
         '''
-
-        return torch.stack(self.attention_weights[attention_type], dim = 0).squeeze_(dim = 2).squeeze_(dim = 3).mean(dim = 1).mean(dim = 1).cpu()
+        assert len(self.attention_weights[attention_type]) == 1
+        return self.attention_weights[attention_type][0].mean(dim = 0).mean(dim = 1).cpu()
     
+    def clear_attentions(self):
+        self.attention_weights = {k: [] for k in self.attention_weights.keys()}
+
+

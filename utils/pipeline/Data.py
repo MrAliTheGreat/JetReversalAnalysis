@@ -1,5 +1,5 @@
 import torch
-import zarr, fsspec
+import zarr
 import numpy as np
 
 
@@ -60,4 +60,5 @@ class InferenceAnalysisDataset(torch.utils.data.Dataset):
         extra_full = torch.from_numpy(extra_full).float()
 
         return input_window, label_window, label_full, extra_full
+    
 
